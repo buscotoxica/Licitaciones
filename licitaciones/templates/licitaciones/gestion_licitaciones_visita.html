@@ -9,6 +9,9 @@
     <title>Gestión de Licitaciones</title>
     <link rel="stylesheet" href="{% static 'licitaciones/css/gestion_licitaciones.css' %}?v=2.7">
     <link rel="stylesheet" href="{% static 'licitaciones/css/gestion_licitaciones_operador.css' %}?v=2.1">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <style>
         /* Ajustes específicos para la vista de admin */
         .acciones-sticky {
@@ -558,17 +561,33 @@
                                     </select>
                                 </div>
                                 <div class="form-field">
-                                    <label for="departamentoInput">
-                                        <span class="field-icon">🏢</span>
-                                        Departamento
-                                    </label>
-                                    <select name="departamento" id="departamentoInput">
-                                        <option value="">Seleccione un departamento</option>
-                                        {% for departamento in departamentos %}
-                                            <option value="{{ departamento.id }}">{{ departamento.nombre }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
+    <label for="departamentoInput">
+        <span class="field-icon">🏢</span>
+        Departamento
+    </label>
+    
+    <div style="display: flex; gap: 10px; align-items: center;">
+        
+        <select name="departamento" 
+                id="departamentoInput" 
+                class="campo-normal" 
+                style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+                data-url="/ajax/crear-departamento/">
+            
+            <option value="">Seleccione...</option>
+            {% for departamento in departamentos %}
+                <option value="{{ departamento.id }}">{{ departamento.nombre }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="button" 
+                id="btnNuevoDepartamento" 
+                title="Agregar nuevo departamento"
+                style="padding: 8px 12px; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: bold;">
+            ➕
+        </button>
+    </div>
+</div>
                                 <div class="form-field">
                                     <label for="llamadoCotizacionSelect">
                                         <span class="field-icon">📞</span>

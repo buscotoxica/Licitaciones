@@ -43,4 +43,5 @@ urlpatterns = [
     path('api/notificaciones/marcar_todas_leidas/', views.marcar_todas_notificaciones_leidas, name='marcar_todas_notificaciones_leidas'),
     # Ruta para calendario
     path('api/calendario/eventos/', views.obtener_eventos_calendario, name='obtener_eventos_calendario'),
+    path('ajax/crear-departamento/', views.crear_departamento_ajax, name='crear_departamento_ajax'),
 ]

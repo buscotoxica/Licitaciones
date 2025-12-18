@@ -476,9 +476,25 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
         // N° de cuenta
-        if (datos && datos.numero_cuenta !== undefined) {
-            const numeroCuentaInput = document.getElementById('numeroCuentaInput');
-            if (numeroCuentaInput) numeroCuentaInput.value = datos.numero_cuenta;
+        const contenedorCuentas = document.getElementById('contenedorCuentas');
+        if (contenedorCuentas) {
+            contenedorCuentas.innerHTML = ''; 
+            
+            if (datos && datos.numero_cuenta) {
+                // --- CORRECCIÓN AQUÍ ---
+                // Antes: .split(/\s*[\/-]\s*/)  <-- Esto cortaba con guiones (-)
+                // Ahora: .split(/\s*\/\s*/)     <-- Esto SOLO corta con barras (/)
+                
+                let cuentas = datos.numero_cuenta.split(/\s*\/\s*/); 
+                
+                cuentas.forEach(c => {
+                    if(c.trim()) agregarFilaCuenta(c.trim());
+                });
+            } 
+            
+            if (contenedorCuentas.children.length === 0) {
+                agregarFilaCuenta("");
+            }
         }
         // En plan anual (select sí/no)
         if (datos && datos.en_plan_anual !== undefined) {
@@ -499,6 +515,57 @@ document.addEventListener("DOMContentLoaded", function () {
             const llamadoCotizacionSelect = document.getElementById('llamadoCotizacionSelect');
             if (llamadoCotizacionSelect) llamadoCotizacionSelect.value = datos.llamado_cotizacion;
         }
+
+        const inputCreacion = document.getElementById('fechaCreacionInput');
+    
+    if (inputCreacion) {
+        // ¿Es edición? Verificamos si hay ID
+        const esEdicion = datos && (datos.id || datos.pk);
+
+        if (esEdicion) {
+            // ============================================
+            // MODO EDICIÓN: LIBRE
+            // ============================================
+            inputCreacion.disabled = false; // Aseguramos que esté libre
+            inputCreacion.removeAttribute('disabled'); // Doble seguridad
+
+            // Lógica para poner el valor de la fecha
+            if (datos.fecha_creacion) {
+                let fechaRaw = datos.fecha_creacion.trim();
+                
+                if (fechaRaw.includes('T')) {
+                    inputCreacion.value = fechaRaw.split('T')[0];
+                } else if (fechaRaw.includes('/') || fechaRaw.includes('-')) {
+                    // Conversión DD-MM-YYYY a YYYY-MM-DD
+                    let separador = fechaRaw.includes('/') ? '/' : '-';
+                    let partes = fechaRaw.split(separador);
+                    if (partes.length === 3) {
+                        // Asumiendo formato chile: dia-mes-año -> año-mes-dia
+                        inputCreacion.value = `${partes[2]}-${partes[1]}-${partes[0]}`;
+                    } else {
+                        inputCreacion.value = fechaRaw;
+                    }
+                } else {
+                    inputCreacion.value = fechaRaw;
+                }
+            }
+
+        } else {
+            // ============================================
+            // MODO CREACIÓN: BLOQUEADO (Aquí lo bloqueamos por JS)
+            // ============================================
+            
+            // 1. Bloquear
+            inputCreacion.disabled = true;
+            
+            // 2. Poner fecha de hoy por defecto
+            const hoy = new Date();
+            const dia = String(hoy.getDate()).padStart(2, '0');
+            const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+            const anio = hoy.getFullYear();
+            inputCreacion.value = `${anio}-${mes}-${dia}`;
+        }
+    }
         // N° de pedido
         if (datos && datos.numero_pedido !== undefined) {
             const numeroPedidoInput = document.getElementById('numeroPedidoInput');
@@ -885,6 +952,7 @@ document.querySelectorAll('.editar-fila').forEach(btn => {
                 }
             }
         }
+        const fechaCreacionCell = fila.querySelector('[data-campo="fecha_creacion"]');
         const etapaCell = fila.querySelector('[data-campo="etapa"]');
         const estadoBadge = fila.querySelector('[data-campo="estado"] .estado-badge');
         const monedaCell = fila.querySelector('[data-campo="moneda"]');
@@ -971,6 +1039,7 @@ document.querySelectorAll('.editar-fila').forEach(btn => {
             id: id,
             operador: operadorId || '',
             operador_2: operador2Id || '',
+            fecha_creacion: fechaCreacionCell ? fechaCreacionCell.innerText.trim() : '',
             etapa: getIdFromCell(etapaCell, getEtapasPorTipo(getIdFromCell(fila.querySelector('[data-campo="tipo_licitacion"]'), 'tiposLicitacion')), 'etapasLicitacion'),
             estado: estadoValue,
             moneda: getIdFromCell(monedaCell, 'monedasLicitacion'),
@@ -2775,3 +2844,178 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+document.addEventListener('DOMContentLoaded', function() {
+    
+    const btnAgregar = document.getElementById('btnNuevoDepartamento');
+    const selectDept = document.getElementById('departamentoInput');
+
+    // Solo funciona si el botón existe en la pantalla
+    if (btnAgregar && selectDept) {
+
+        btnAgregar.addEventListener('click', function() {
+            // 1. Pedir el nombre al usuario con una ventanita simple del navegador
+            let nuevoNombre = prompt("Escriba el nombre del nuevo departamento:");
+
+            // Si el usuario escribió algo y no le dio Cancelar
+            if (nuevoNombre && nuevoNombre.trim() !== "") {
+                
+                // Obtener la URL y el Token de seguridad
+                const url = selectDept.getAttribute('data-url');
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                // 2. Enviar a Django
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ nombre: nuevoNombre })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.id) {
+                        // ÉXITO: Crear la nueva opción en HTML
+                        const nuevaOpcion = document.createElement('option');
+                        nuevaOpcion.value = result.id;
+                        nuevaOpcion.text = result.nombre;
+                        nuevaOpcion.selected = true; // Lo seleccionamos automáticamente
+
+                        // Agregarla a la lista
+                        selectDept.appendChild(nuevaOpcion);
+                        
+                        alert("Departamento '" + result.nombre + "' agregado correctamente.");
+                    } else {
+                        alert("Error: " + (result.error || "No se pudo guardar"));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("Error de conexión.");
+                });
+            }
+        });
+    }
+});
+
+function agregarFilaCuenta(valor = "") {
+    const contenedor = document.getElementById('contenedorCuentas');
+    if (!contenedor) return;
+
+    const div = document.createElement('div');
+    div.style.cssText = "display: flex; gap: 5px; align-items: center;";
+    
+    // El input visible
+    const input = document.createElement('input');
+    input.type = "text";
+    input.className = "input-cuenta-visual"; // Clase para identificarlos
+    input.value = valor;
+    input.placeholder = "Ingrese N° cuenta";
+    input.style.flex = "1"; // Que ocupe el espacio
+    
+    // Si es el primer input, lo hacemos obligatorio
+    if (contenedor.children.length === 0) {
+        input.required = true;
+    }
+
+    // Botón para borrar (solo si no es el único)
+    const btnBorrar = document.createElement('button');
+    btnBorrar.type = "button";
+    btnBorrar.innerHTML = "🗑️";
+    btnBorrar.style.cssText = "border: none; background: #ffebee; cursor: pointer; padding: 5px; border-radius: 4px;";
+    btnBorrar.onclick = function() {
+        if (contenedor.children.length > 1) {
+            div.remove();
+            actualizarInputOcultoCuentas();
+        } else {
+            input.value = ""; // Si es el último, solo limpia
+            actualizarInputOcultoCuentas();
+        }
+    };
+
+    // Evento: cada vez que escriban, actualizamos el hidden
+    input.addEventListener('input', actualizarInputOcultoCuentas);
+
+    div.appendChild(input);
+    div.appendChild(btnBorrar);
+    contenedor.appendChild(div);
+    
+    actualizarInputOcultoCuentas(); // Actualizar al agregar
+}
+
+// 2. Función que une todos los valores en el input oculto (separados por " / ")
+function actualizarInputOcultoCuentas() {
+    const inputs = document.querySelectorAll('.input-cuenta-visual');
+    const valores = [];
+    
+    inputs.forEach(inp => {
+        if (inp.value.trim() !== "") {
+            valores.push(inp.value.trim());
+        }
+    });
+
+    // Unimos con " / " (ej: "11111 / 22222")
+    const inputReal = document.getElementById('numeroCuentaReal');
+    if (inputReal) {
+        inputReal.value = valores.join(" / ");
+    }
+}
+
+// 3. Inicializar el botón de agregar
+document.addEventListener('DOMContentLoaded', function() {
+    const btnAdd = document.getElementById('btnAgregarCuentaInput');
+    if (btnAdd) {
+        btnAdd.addEventListener('click', function() {
+            agregarFilaCuenta("");
+        });
+    }
+});
+
+
+function gestionarVisibilidadFecha(esEdicion) {
+    const inputCreacion = document.getElementById('fechaCreacionInput');
+    
+    if (!inputCreacion) return;
+
+    // Buscamos el contenedor padre (div.form-group o col-md-*) para ocultar también el Label
+    const contenedor = inputCreacion.closest('.form-group') || inputCreacion.closest('.col') || inputCreacion.parentElement;
+
+    if (contenedor) {
+        if (esEdicion) {
+            // MODO EDICIÓN: Quitamos el display none (volvemos al default)
+            contenedor.style.display = ''; 
+            // Aseguramos que el input sea editable si así lo deseas
+            inputCreacion.disabled = false; 
+        } else {
+            // MODO CREACIÓN: Ocultamos todo el bloque visualmente
+            contenedor.style.display = 'none'; 
+        }
+    }
+}
+
+JavaScript
+
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // 1. Capturamos tu botón de agregar
+    const btnAgregar = document.getElementById('btnAgregarLicitacion');
+    
+    if (btnAgregar) {
+        btnAgregar.addEventListener('click', function() {
+            // A. Reseteamos el formulario para que esté limpio
+            // Asegúrate que 'formProyecto' sea el ID de tu etiqueta <form>
+            const form = document.getElementById('formProyecto'); 
+            if (form) form.reset();
+
+            // B. AQUÍ ESTÁ LA CLAVE: Forzamos modo "Creación" (False)
+            // Esto llamará a la función que creamos antes para ocultar el div
+            if (typeof gestionarVisibilidadFecha === "function") {
+                gestionarVisibilidadFecha(false);
+            }
+
+            // C. Si no usas data-toggle en el HTML, abre el modal aquí:
+            // $('#tuModalId').modal('show'); 
+        });
+    }
+});
+

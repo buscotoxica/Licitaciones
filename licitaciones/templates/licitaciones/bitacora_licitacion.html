@@ -576,7 +576,15 @@
                         <div class="entrada-observaciones">
                             {% if b.observacion %}
                             <div class="observacion-contenido">
-                                <div class="observacion-titulo">💭 Observación por {{ b.observacion.user.first_name|add:" "|add:b.observacion.user.last_name|default:" " }}:</div>
+                                <div class="observacion-titulo">
+    💭 Observación por 
+    {% if b.observacion.user %}
+        {{ b.observacion.user.get_full_name|default:b.observacion.user.username }}
+    {% else %}
+        Sistema
+    {% endif %}
+    :
+</div>
 
                                 <div class="observacion-texto">{{ b.observacion.texto }}</div>
                                 {% if es_admin %}

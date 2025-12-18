@@ -408,12 +408,20 @@
                                     <input type="text" name="id_mercado_publico" id="idMercadoPublicoInput" placeholder="Ingrese el ID de Mercado Público" maxlength="50">
                                 </div>
                                 <div class="form-field">
-                                    <label for="numeroCuentaInput">
-                                        <span class="field-icon">🏦</span>
-                                        N° de cuenta
-                                    </label>
-                                    <input type="text" name="numero_cuenta" id="numeroCuentaInput" required placeholder="Ingrese el número de cuenta" maxlength="30">
-                                </div>
+    <label>
+        <span class="field-icon">🏦</span>
+        N° de cuenta(s)
+    </label>
+    
+    <div id="contenedorCuentas" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 5px;">
+        </div>
+
+    <button type="button" id="btnAgregarCuentaInput" style="background: none; border: none; color: #007bff; cursor: pointer; text-align: left; padding: 0; font-size: 0.9em;">
+        + Agregar otra cuenta
+    </button>
+
+    <input type="hidden" name="numero_cuenta" id="numeroCuentaReal">
+</div>
                                 <div class="form-field">
                                     <label for="operadorSelect">
                                         <span class="field-icon">👤</span>
@@ -497,22 +505,22 @@
                                     </select>
                                 </div>
                                 <div class="form-field span-2">
-                                    <label for="financiamientoSelect">
-                                        <span class="field-icon">💳</span>
-                                        Financiamiento
-                                    </label>
-                                    <select name="financiamiento" id="financiamientoSelect" required>
-                                        {% if financiamientos %}
-                                            <option value="">Seleccione financiamiento</option>
-                                        {% else %}
-                                            <option value="">No hay financiamientos disponibles</option>
-                                        {% endif %}
-                                        {% for fin in financiamientos %}
-                                            <option value="{{ fin.id }}">{{ fin.nombre }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <small class="field-help">💡 Mantén presionado Ctrl para seleccionar múltiples opciones</small>
-                                </div>
+    <label for="financiamientoSelect">
+        <span class="field-icon">💳</span>
+        Financiamiento
+    </label>
+    <select name="financiamiento" id="financiamientoSelect" required multiple style="height: 120px;">
+        {% if financiamientos %}
+            {% else %}
+            <option value="">No hay financiamientos disponibles</option>
+        {% endif %}
+        
+        {% for fin in financiamientos %}
+            <option value="{{ fin.id }}">{{ fin.nombre }}</option>
+        {% endfor %}
+    </select>
+    <small class="field-help">💡 Mantén presionado <strong>Ctrl</strong> (o Cmd en Mac) para seleccionar múltiples opciones</small>
+</div>
                                 <div class="form-field">
                                     <label for="montoPresupuestadoInput">
                                         <span class="field-icon">💵</span>
@@ -546,60 +554,88 @@
 
                         <!-- Sección Operativa -->
                         <div class="form-section">
-                            <h3 class="section-title">
-                                <span class="section-icon">⚙️</span>
-                                Información Operativa
-                            </h3>
-                            <div class="form-grid">
-                                <div class="form-field">
-                                    <label for="enPlanAnualSelect">
-                                        <span class="field-icon">📅</span>
-                                        ¿Está en el plan anual?
-                                    </label>
-                                    <select name="en_plan_anual" id="enPlanAnualSelect" required>
-                                        <option value="">Seleccione</option>
-                                        <option value="True">✅ Sí</option>
-                                        <option value="False">❌ No</option>
-                                    </select>
-                                </div>
-                                <div class="form-field">
-                                    <label for="etapaSelect">
-                                        <span class="field-icon">⚡</span>
-                                        Etapa
-                                    </label>
-                                    <select name="etapa" id="etapaSelect" required>
-                                        <option value="">Seleccione una etapa</option>
-                                        {% for etapa in etapas %}
-                                            <option value="{{ etapa.id }}">{{ etapa.nombre }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="form-field">
-                                    <label for="departamentoInput">
-                                        <span class="field-icon">🏢</span>
-                                        Departamento
-                                    </label>
-                                    <select name="departamento" id="departamentoInput">
-                                        <option value="">Seleccione un departamento</option>
-                                        {% for departamento in departamentos %}
-                                            <option value="{{ departamento.id }}">{{ departamento.nombre }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="form-field">
-                                    <label for="llamadoCotizacionSelect">
-                                        <span class="field-icon">📞</span>
-                                        Llamado Cotización
-                                    </label>
-                                    <select name="llamado_cotizacion" id="llamadoCotizacionSelect">
-                                        <option value="">Seleccione el tipo de llamado</option>
-                                        {% for key, value in llamado_cotizacion_choices %}
-                                            <option value="{{ key }}">{{ value }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
+    <h3 class="section-title">
+        <span class="section-icon">⚙️</span>
+        Información Operativa
+    </h3>
+    <div class="form-grid">
+        
+        <div class="form-field">
+    <label for="fechaCreacionInput">
+        <span class="field-icon">📅</span>
+        Fecha de Asignación (Inicio)
+    </label>
+    <input type="date" 
+           name="fecha_creacion" 
+           id="fechaCreacionInput" 
+           class="form-control" 
+           required> 
+    <small class="field-help">💡 Modifica esta fecha para recalcular los plazos.</small>
+</div>
+        <div class="form-field">
+            <label for="enPlanAnualSelect">
+                <span class="field-icon">📅</span>
+                ¿Está en el plan anual?
+            </label>
+            <select name="en_plan_anual" id="enPlanAnualSelect" required>
+                <option value="">Seleccione</option>
+                <option value="True">✅ Sí</option>
+                <option value="False">❌ No</option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label for="etapaSelect">
+                <span class="field-icon">⚡</span>
+                Etapa
+            </label>
+            <select name="etapa" id="etapaSelect" required>
+                <option value="">Seleccione una etapa</option>
+                {% for etapa in etapas %}
+                    <option value="{{ etapa.id }}">{{ etapa.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label for="departamentoInput">
+                <span class="field-icon">🏢</span>
+                Departamento
+            </label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <select name="departamento" 
+                        id="departamentoInput" 
+                        class="campo-normal" 
+                        style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+                        data-url="/ajax/crear-departamento/">
+                    <option value="">Seleccione...</option>
+                    {% for departamento in departamentos %}
+                        <option value="{{ departamento.id }}">{{ departamento.nombre }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" 
+                        id="btnNuevoDepartamento" 
+                        title="Agregar nuevo departamento"
+                        style="padding: 8px 12px; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: bold;">
+                    ➕
+                </button>
+            </div>
+        </div>
+
+        <div class="form-field">
+            <label for="llamadoCotizacionSelect">
+                <span class="field-icon">📞</span>
+                Llamado Cotización
+            </label>
+            <select name="llamado_cotizacion" id="llamadoCotizacionSelect">
+                <option value="">Seleccione el tipo de llamado</option>
+                {% for key, value in llamado_cotizacion_choices %}
+                    <option value="{{ key }}">{{ value }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</div>
 
                         <!-- Sección Documentos -->
                         <div class="form-section">

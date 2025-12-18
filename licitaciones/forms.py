@@ -15,10 +15,29 @@ class LicitacionForm(forms.ModelForm):
         widget=forms.ClearableFileInput(attrs={'multiple': True})
     )
 
+    fecha_creacion = forms.DateField(
+        label="Fecha Creación",
+        required=False,
+        widget=forms.DateInput(attrs={
+            'id': 'fechaCreacionInput',  # <--- AQUÍ ESTÁ LA MAGIA
+            'class': 'form-control', 
+            'type': 'date'
+        })
+    )
+
+    class Meta:
+        model = Licitacion
+        fields = [
+            # ... resto de campos ...
+            'fecha_creacion',
+            # ... resto de campos ...
+        ]
+
     class Meta:
         model = Licitacion
         fields = [
             'numero_pedido',
+            'fecha_creacion',
             'id_mercado_publico',
             'numero_cuenta',
             'operador_user',

@@ -323,6 +323,39 @@ def modificar_licitacion(request, licitacion_id):
                 valores_antes['N° de cuenta'] = str(licitacion.tipo_presupuesto)
                 valores_despues['N° de cuenta'] = str(tipo_presupuesto)
                 licitacion.tipo_presupuesto = tipo_presupuesto
+
+            fecha_creacion_str = data.get('fecha_creacion')
+            if fecha_creacion_str:
+                from datetime import datetime
+                from django.utils import timezone
+                
+                # Convertimos el string "YYYY-MM-DD" a objeto datetime
+                try:
+                    # Parseamos la fecha que viene del input date
+                    fecha_nueva_date = datetime.strptime(fecha_creacion_str, '%Y-%m-%d').date()
+                    
+                    # Como el modelo es DateTimeField, necesitamos combinar con hora (00:00:00)
+                    # o mantener la hora que ya tenía si quieres ser muy preciso, 
+                    # pero para "Fecha Asignación" suele bastar resetear la hora.
+                    fecha_nueva_dt = datetime.combine(fecha_nueva_date, datetime.min.time())
+                    
+                    # Hacemos la fecha "aware" (con zona horaria) si Django lo requiere
+                    if timezone.is_naive(fecha_nueva_dt):
+                        fecha_nueva_dt = timezone.make_aware(fecha_nueva_dt)
+
+                    # Comparamos (usamos .date() para comparar solo el día y evitar ruido por horas)
+                    if licitacion.fecha_creacion.date() != fecha_nueva_dt.date():
+                        fecha_antes_str = licitacion.fecha_creacion.strftime('%d-%m-%Y')
+                        fecha_nueva_fmt = fecha_nueva_dt.strftime('%d-%m-%Y')
+                        
+                        cambios.append(f"Fecha Asignación: '{fecha_antes_str}' → '{fecha_nueva_fmt}'")
+                        campos_modificados.append('Fecha Asignación')
+                        valores_antes['Fecha Asignación'] = fecha_antes_str
+                        valores_despues['Fecha Asignación'] = fecha_nueva_fmt
+                        
+                        licitacion.fecha_creacion = fecha_nueva_dt
+                except ValueError:
+                    pass # Si la fecha viene vacía o mal formada, la ignoramos
             fecha_tentativa_termino = get_fecha_tentativa_termino(data.get('tipo_presupuesto', ''), licitacion.fecha_creacion.date())
             if licitacion.fecha_tentativa_termino != fecha_tentativa_termino:
                 if (licitacion.fecha_tentativa_termino):
@@ -2341,3 +2374,32 @@ def api_puede_avanzar_etapa(request, licitacion_id):
         'puede_avanzar': puede_avanzar,
         'ultima_bitacora': ultima_bitacora,
     })
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import Departamento
+import json
+
+def crear_departamento_ajax(request):
+    """Vista auxiliar para crear departamentos desde el formulario vía AJAX"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            nombre_nuevo = data.get('nombre')
+            
+            if not nombre_nuevo:
+                return JsonResponse({'error': 'Falta el nombre'}, status=400)
+
+            # Crea el departamento o recupera uno si ya existe con ese nombre
+            departamento, created = Departamento.objects.get_or_create(
+                nombre=nombre_nuevo.strip() # strip quita espacios extra
+            )
+            
+            return JsonResponse({
+                'id': departamento.id,
+                'nombre': departamento.nombre,
+                'nuevo': created
+            })
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'Método no permitido'}, status=405)

@@ -78,27 +78,27 @@ WSGI_APPLICATION = 'gestion_licitaciones.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'Licitaciones',  
-#         'USER': 'postgres', 
-#         'PASSWORD': '1234',  
-#         'HOST': 'localhost', 
-#         'PORT': '5432',
-#     }
-# }
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'licitaciones',  
-        'USER': 'licitacione_user', 
-        'PASSWORD': 'licitacione2025',  
+        'NAME': 'licitaciones3',  
+        'USER': 'postgres', 
+        'PASSWORD': 'osval217K',  
         'HOST': 'localhost', 
         'PORT': '5432',
     }
 }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'licitaciones',  
+#         'USER': 'licitacione_user', 
+#         'PASSWORD': 'licitacione2025',  
+#         'HOST': 'localhost', 
+#         'PORT': '5432',
+#     }
+# }
 
 
 # Password validation
