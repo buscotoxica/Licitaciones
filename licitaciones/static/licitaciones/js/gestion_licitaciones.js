@@ -3019,3 +3019,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+document.addEventListener('click', function(event) {
+    // 1. Verificamos si el clic fue en un botón con la clase 'editar-fila'
+    // (o en el ícono del lápiz que está dentro del botón)
+    const btnEditar = event.target.closest('.editar-fila');
+
+    if (btnEditar) {
+        // ¡Detectamos clic en Editar!
+        
+        // 2. Ejecutamos la función para MOSTRAR la fecha
+        // (True = Modo Edición = Visible)
+        if (typeof gestionarVisibilidadFecha === 'function') {
+            gestionarVisibilidadFecha(true);
+        }
+        
+        // Opcional: Log para verificar en consola
+        console.log("Editando: Campo fecha activado.");
+    }
+});
