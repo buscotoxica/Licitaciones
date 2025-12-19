@@ -263,7 +263,19 @@ def modificar_licitacion(request, licitacion_id):
                 valores_antes['N° de pedido'] = str(licitacion.numero_pedido)
                 valores_despues['N° de pedido'] = str(numero_pedido)
                 licitacion.numero_pedido = numero_pedido
+
+            #  ⬇️ AGREGAR ESTO: Lógica para Profesional a Cargo ⬇️
+            profesional_nuevo = data.get('profesional_a_cargo')
             
+            # Comparamos para guardar en la bitácora si cambió
+            if profesional_nuevo is not None and str(licitacion.profesional_a_cargo or '') != str(profesional_nuevo):
+                cambios.append(f"Profesional a Cargo: '{licitacion.profesional_a_cargo or ''}' → '{profesional_nuevo}'")
+                campos_modificados.append('Profesional a Cargo')
+                valores_antes['Profesional a Cargo'] = str(licitacion.profesional_a_cargo or '')
+                valores_despues['Profesional a Cargo'] = str(profesional_nuevo)
+                
+                # Asignar el valor
+                licitacion.profesional_a_cargo = profesional_nuevo
             # ID Mercado Público
             id_mercado_publico = data.get('id_mercado_publico', '')
             if licitacion.id_mercado_publico != id_mercado_publico:
@@ -1480,7 +1492,7 @@ def observacion_bitacora_api(request, bitacora_id):
         )
 
     return JsonResponse({'ok': True})
-
+#agregarproyecto 
 @csrf_exempt
 def agregar_proyecto(request):
     try:
@@ -1518,6 +1530,7 @@ def agregar_proyecto(request):
             llamado_cotizacion=data.get('llamado_cotizacion', ''),
             tipo_presupuesto=tipo_presupuesto,
             estado_fk=estado_en_curso,
+            profesional_a_cargo=data.get('profesional_a_cargo', ''),
             pedido_devuelto=data.get('pedido_devuelto', False),            # Agregar la licitación fallida si se proporcionó un ID
             licitacion_fallida_linkeada=Licitacion.objects.get(id=data.get('licitacion_fallida_linkeada')) if data.get('licitacion_fallida_linkeada') else None,
         )

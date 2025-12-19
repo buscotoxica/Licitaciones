@@ -38,6 +38,7 @@ class LicitacionForm(forms.ModelForm):
         fields = [
             'numero_pedido',
             'fecha_creacion',
+            'profesional_a_cargo',
             'id_mercado_publico',
             'numero_cuenta',
             'operador_user',
@@ -61,4 +62,5 @@ class LicitacionForm(forms.ModelForm):
         widgets = {
             'tipo_licitacion': forms.HiddenInput(),
             'licitacion_fallida_linkeada': forms.HiddenInput(),
+            'profesional_a_cargo': forms.TextInput(attrs={'class': 'form-control', 'id': 'profesionalCargoInput'}),
         }

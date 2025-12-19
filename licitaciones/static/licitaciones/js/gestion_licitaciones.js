@@ -419,6 +419,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 operadorSelect.value = opId;
             }
         }
+        
         // Operador 2
         if (datos && (datos.operador_2 || datos.operador_2_id)) {
             const operador2Select = document.getElementById('operador2Select');
@@ -567,10 +568,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
         // N° de pedido
-        if (datos && datos.numero_pedido !== undefined) {
-            const numeroPedidoInput = document.getElementById('numeroPedidoInput');
-            if (numeroPedidoInput) numeroPedidoInput.value = datos.numero_pedido;
-        }
+        if (numeroPedidoInput) {
+    // Si viene texto sucio "1050-RRHH...", parseInt lo convierte en "1050"
+    numeroPedidoInput.value = parseInt(datos.numero_pedido); 
+}
         // ID Mercado Público
         if (datos && datos.id_mercado_publico !== undefined) {
             const idMercadoPublicoInput = document.getElementById('idMercadoPublicoInput');
@@ -595,6 +596,12 @@ document.addEventListener("DOMContentLoaded", function () {
         if (datos && datos.departamento !== undefined) {
             const departamentoInput = formProyecto['departamento'];
             if (departamentoInput) departamentoInput.value = datos.departamento;
+        }
+        if (datos && datos.profesional_a_cargo !== undefined) {
+            const profCargoInput = document.getElementById('profesionalCargoInput');
+            if (profCargoInput) {
+                profCargoInput.value = datos.profesional_a_cargo;
+            }
         }
         // Monto presupuestado
         if (datos && datos.monto_presupuestado !== undefined) {
@@ -1039,7 +1046,7 @@ document.querySelectorAll('.editar-fila').forEach(btn => {
             id: id,
             operador: operadorId || '',
             operador_2: operador2Id || '',
-            fecha_creacion: fechaCreacionCell ? fechaCreacionCell.innerText.trim() : '',
+            fecha_creacion: fechaCreacionCell ? fechaCreacionCell.innerText.trim().split(' ')[0] : '',
             etapa: getIdFromCell(etapaCell, getEtapasPorTipo(getIdFromCell(fila.querySelector('[data-campo="tipo_licitacion"]'), 'tiposLicitacion')), 'etapasLicitacion'),
             estado: estadoValue,
             moneda: getIdFromCell(monedaCell, 'monedasLicitacion'),
@@ -1058,6 +1065,8 @@ document.querySelectorAll('.editar-fila').forEach(btn => {
             direccion: direccionCell ? (direccionCell.innerText.trim() === '-' ? '' : direccionCell.innerText.trim()) : '',
             institucion: institucionCell ? (institucionCell.innerText.trim() === '-' ? '' : institucionCell.innerText.trim()) : '',
             tipo_licitacion: getIdFromCell(fila.querySelector('[data-campo="tipo_licitacion"]'), 'tiposLicitacion'),
+            profesional_a_cargo: fila.querySelector('[data-campo="profesional_a_cargo"]') ? fila.querySelector('[data-campo="profesional_a_cargo"]').textContent.trim() : '',
+            
         });
     });
 });
@@ -1220,9 +1229,11 @@ formProyecto.onsubmit = async function(e) {
             } else {
                 datosJson[k] = v;
             }
+        
         } else {
             datosJson[k] = v;
         }
+
     });
     
     // Agregar tipo de monto basado en los checkboxes
@@ -2993,7 +3004,7 @@ function gestionarVisibilidadFecha(esEdicion) {
     }
 }
 
-JavaScript
+
 
 document.addEventListener('DOMContentLoaded', function() {
     

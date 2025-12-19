@@ -144,7 +144,7 @@ class Licitacion(models.Model):
 
     fecha_publicacion_mercado_publico = models.DateField(blank=True, null=True, verbose_name="Fecha de publicación en mercado público")
     fecha_cierre_ofertas_mercado_publico = models.DateField(blank=True, null=True, verbose_name="Fecha de cierre de ofertas en mercado público")
-
+    profesional_a_cargo = models.CharField(max_length=100, null=True, blank=True)
     # Tipos de licitación fallida (cuando fallida es True)
     TIPO_FALLIDA_CHOICES = [
         ('revocada', 'Revocada'),

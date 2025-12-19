@@ -3011,3 +3011,8 @@ td[data-campo="etapa"][title]:hover::before {
     z-index: 1001;
     margin-bottom: -5px;
 }
+.celda-con-sufijo::after {
+    content: var(--sufijo); /* Aquí dibuja el texto extra */
+    /* Opcional: si quieres que el texto extra se vea un poco diferente */
+    opacity: 0.8; 
+}
