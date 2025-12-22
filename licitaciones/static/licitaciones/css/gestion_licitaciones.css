@@ -2810,7 +2810,46 @@ td[data-col="tipo_falla"] {
     transform: translateY(0);
     box-shadow: 0 4px 12px rgba(33, 115, 70, 0.3);
 }
+.modal-info-general {
+    max-width: 900px;
+    width: 90%;
+    padding: 0;
+}
 
+/* Contenedor de la info */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px 24px;
+    padding: 20px 24px;
+}
+
+/* Cada campo */
+.info-grid > div {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+/* Título del campo */
+.info-grid strong {
+    display: block;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #6c757d;
+    margin-bottom: 6px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+}
 /* Botón de agregar (azul) */
 .btn.agregar,
 .btn-moderno.btn-agregar {

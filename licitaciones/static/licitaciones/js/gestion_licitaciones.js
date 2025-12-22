@@ -3048,3 +3048,85 @@ document.addEventListener('click', function(event) {
         console.log("Editando: Campo fecha activado.");
     }
 });
+document.addEventListener("DOMContentLoaded", () => {
+    console.log("✅ DOMContentLoaded - info general JS cargado");
+
+    const modalInfo = document.getElementById("modalInfoGeneral");
+    const cerrarModalInfo = document.getElementById("cerrarModalInfo");
+    const contenido = document.getElementById("contenidoInfoGeneral");
+
+    console.log("🔍 modalInfo:", modalInfo);
+    console.log("🔍 cerrarModalInfo:", cerrarModalInfo);
+    console.log("🔍 contenido:", contenido);
+
+    const botones = document.querySelectorAll(".info-general-fila");
+    console.log("🔘 botones .info-general-fila encontrados:", botones.length);
+
+    botones.forEach((btn, index) => {
+        console.log(`➡️ Bind click botón ${index}`, btn);
+
+        btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            console.log("🟢 CLICK info-general-fila");
+
+            const licitacionId = btn.dataset.id;
+            console.log("📌 data-id:", licitacionId);
+
+            if (!licitacionId) {
+                console.warn("⚠️ NO hay data-id en el botón");
+                alert("Selecciona una licitación primero");
+                return;
+            }
+
+            const fila = document.querySelector(`tr[data-id="${licitacionId}"]`);
+            console.log("📄 fila encontrada:", fila);
+
+            if (!fila) {
+                console.error("❌ No se encontró la fila con data-id", licitacionId);
+                alert("No se encontró la fila de la licitación");
+                return;
+            }
+
+            const get = campo => {
+                const celda = fila.querySelector(`[data-campo="${campo}"]`);
+                console.log(`🔎 campo "${campo}" →`, celda?.innerText);
+                return celda?.innerText.trim() || "-";
+            };
+
+            console.log("🧩 Construyendo contenido del modal");
+
+            contenido.innerHTML = `
+                <div class="info-grid">
+                    <div><strong>Iniciativa</strong><br>${get("iniciativa")}</div>
+                    <div><strong>N° Pedido</strong><br>${get("numero_pedido")}</div>
+                    <div><strong>Departamento</strong><br>${get("departamento")}</div>
+                    <div><strong>Profesionales</strong><br>${get("operadores")}</div>
+                    <div><strong>Estado</strong><br>${get("estado")}</div>
+                    <div><strong>Etapa</strong><br>${get("etapa")}</div>
+                    <div><strong>Tipo Licitación</strong><br>${get("tipo_licitacion")}</div>
+                    <div><strong>Monto</strong><br>${get("monto_presupuestado")}</div>
+                </div>
+            `;
+
+            console.log("📢 Abriendo modal");
+            modalInfo.classList.add("active");
+            modalInfo.style.display = "flex";
+            modalInfo.style.zIndex = "9999";
+            gestionarOverflowBody();
+        });
+    });
+
+    if (cerrarModalInfo) {
+        cerrarModalInfo.addEventListener("click", () => {
+            console.log("❎ Cerrar modal info general");
+            modalInfo.classList.remove("active");
+            modalInfo.style.display = "none";
+            gestionarOverflowBody();
+        });
+    } else {
+        console.warn("⚠️ cerrarModalInfo no encontrado");
+    }
+});
+

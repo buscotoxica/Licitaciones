@@ -2416,3 +2416,35 @@ def crear_departamento_ajax(request):
             return JsonResponse({'error': str(e)}, status=500)
     
     return JsonResponse({'error': 'Método no permitido'}, status=405)
+from django.http import JsonResponse, Http404
+from django.contrib.auth.decorators import login_required
+from .models import Licitacion
+
+@login_required
+def licitacion_info_general(request, licitacion_id):
+    try:
+        lic = Licitacion.objects.select_related(
+            "departamento",
+            "etapa_fk",
+            "estado_fk",
+            "tipo_licitacion",
+            "operador_user",
+            "operador_2"
+        ).get(pk=licitacion_id)
+    except Licitacion.DoesNotExist:
+        raise Http404("Licitación no encontrada")
+
+    return JsonResponse({
+        "id": lic.id,
+        "iniciativa": lic.iniciativa,
+        "numero_pedido": lic.numero_pedido,
+        "departamento": lic.departamento.nombre if lic.departamento else "-",
+        "operador_1": lic.operador_user.get_full_name() if lic.operador_user else "-",
+        "operador_2": lic.operador_2.get_full_name() if lic.operador_2 else "-",
+        "estado": lic.estado_fk.nombre if lic.estado_fk else "-",
+        "etapa": lic.etapa_fk.nombre if lic.etapa_fk else "-",
+        "tipo_licitacion": lic.tipo_licitacion.nombre if lic.tipo_licitacion else "-",
+        "monto": lic.monto_presupuestado,
+        "moneda": lic.moneda.nombre if lic.moneda else "-",
+        "en_plan_anual": "Sí" if lic.en_plan_anual else "No",
+    })

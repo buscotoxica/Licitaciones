@@ -305,6 +305,11 @@
             <button class="btn-toggle-acciones cronologia-fila" data-id="" title="Ver cronología" {% if not es_admin %}style="visibility: hidden;"{% endif %}>
                 <span class="icono-accion">📅</span>
             </button>
+            <button class="btn-toggle-acciones info-general-fila"
+        data-id=""
+        title="Información general">
+    <span class="icono-accion">ℹ️</span>
+</button>
             
             <!-- Botón Documentos (solo admin) -->
             <button class="btn-toggle-acciones documentos-fila" data-id="" title="Ver documentos" {% if not es_admin %}style="visibility: hidden;"{% endif %}>
@@ -331,10 +336,7 @@
                             <span class="icono-accion">🗑️</span>
                         </button>
                         
-                        <!-- Botón Ver última observación (siempre visible) -->
-                        <button class="btn btn-accion ultima-obs-fila icon-btn" data-id="{{ licitacion.id }}" title="Ver última observación">
-                            <span class="icono-accion">📝</span>
-                        </button>
+                       
                         
                         <!-- Botón Bitácora (siempre visible) -->
                          {% if licitacion.id %}
@@ -356,6 +358,7 @@
                     </div>
                     {% endfor %}
                 </div>
+                
             </div>
             </div>
         <div class="paginator">
@@ -1104,6 +1107,34 @@
             </div>
         </div>
     </div>
+
+    {% comment %} <div id="modalInfoGeneral" class="modal-container modern-modal" style="display:none;">
+    <div class="modal-content" style="max-width:600px;">
+        <div class="modal-header">
+            <h2 class="modal-title">
+                <span class="modal-icon">ℹ️</span>
+                Información General
+            </h2>
+            <span class="btn-close" id="cerrarModalInfo">&times;</span>
+        </div>
+
+        <div class="modal-body" id="contenidoInfoGeneral">
+            <!-- Se llena por JS -->
+            <div style="text-align:center;">Cargando información…</div>
+        </div>
+    </div>
+</div> {% endcomment %}
+
+<div id="modalInfoGeneral" class="modal-container modern-modal">
+    <div class="modal-content modal-info-general">
+        <div class="modal-header">
+            <h2>📌 Información General de la Licitación</h2>
+            <span id="cerrarModalInfo" class="btn-close">&times;</span>
+        </div>
+
+        <div id="contenidoInfoGeneral"></div>
+    </div>
+</div>
 
 <!-- Exportar etapas y tipos al JS -->
 {{ etapas|json_script:"etapas-licitacion-data" }}

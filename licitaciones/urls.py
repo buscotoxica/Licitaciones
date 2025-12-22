@@ -44,4 +44,5 @@ urlpatterns = [
     # Ruta para calendario
     path('api/calendario/eventos/', views.obtener_eventos_calendario, name='obtener_eventos_calendario'),
     path('ajax/crear-departamento/', views.crear_departamento_ajax, name='crear_departamento_ajax'),
+    path("api/licitacion/<int:licitacion_id>/info-general/",views.licitacion_info_general,name="licitacion_info_general"),
 ]
