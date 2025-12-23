@@ -223,7 +223,11 @@
                             {% endfor %}
                         </td>
                         <td data-campo="numero_cuenta" data-col="numero_cuenta" data-label="N° de cuenta">{{ licitacion.numero_cuenta }}</td>
-                        <td data-campo="en_plan_anual" data-col="en_plan_anual" data-label="En plan anual">{% if licitacion.en_plan_anual %}Sí{% else %}No{% endif %}</td>
+                        <td data-campo="en_plan_anual" 
+    data-col="en_plan_anual" 
+    data-label="En plan anual"
+    data-justificacion="{{ licitacion.justificacion_plan|default_if_none:'' }}"> {% if licitacion.en_plan_anual %}Sí{% else %}No{% endif %}
+</td>
                         <td data-campo="departamento" data-col="departamento" data-label="Departamento">{{ licitacion.departamento.nombre|default:licitacion.departamento }}</td>
                         <td data-campo="monto_presupuestado" data-col="monto_presupuestado" data-label="Monto Presupuestado">${{ licitacion.monto_presupuestado|floatformat:"0"|chilean_thousands }}</td>
                         <td data-campo="tipo_presupuesto" data-col="tipo_presupuesto" data-label="Tipo de presupuesto">{{ licitacion.get_tipo_presupuesto_display }}</td>
@@ -585,16 +589,30 @@
     <small class="field-help">💡 Modifica esta fecha para recalcular los plazos.</small>
 </div>
         <div class="form-field">
-            <label for="enPlanAnualSelect">
-                <span class="field-icon">📅</span>
-                ¿Está en el plan anual?
-            </label>
-            <select name="en_plan_anual" id="enPlanAnualSelect" required>
-                <option value="">Seleccione</option>
-                <option value="True">✅ Sí</option>
-                <option value="False">❌ No</option>
-            </select>
-        </div>
+    <label for="enPlanAnualSelect">
+        <span class="field-icon">📅</span>
+        ¿Está en el plan anual?
+    </label>
+    <select name="en_plan_anual" id="enPlanAnualSelect" required>
+        <option value="">Seleccione</option>
+        <option value="True">✅ Sí</option>
+        <option value="False">❌ No</option>
+    </select>
+</div>
+
+<div id="contenedorJustificacion" class="form-field span-2" style="display: none;">
+    <label for="justificacionInput">
+        <span class="field-icon">📝</span>
+        Justificación del Plan
+    </label>
+    <textarea 
+        name="justificacion_plan" 
+        id="justificacionInput" 
+        placeholder="Indique el motivo por el cual está/no está en el plan anual..." 
+        rows="2"
+        style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;">
+    </textarea>
+</div>
 
         <div class="form-field">
             <label for="etapaSelect">

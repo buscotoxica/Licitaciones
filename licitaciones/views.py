@@ -193,7 +193,29 @@ def modificar_licitacion(request, licitacion_id):
                     valores_antes['En plan anual'] = str(licitacion.en_plan_anual)
                     valores_despues['En plan anual'] = str(en_plan_anual)
                 licitacion.en_plan_anual = en_plan_anual
+            if licitacion.en_plan_anual != en_plan_anual:
+                cambios.append(f"En plan anual: '{licitacion.en_plan_anual}' → '{en_plan_anual}'")
+                campos_modificados.append('En plan anual')
+                valores_antes['En plan anual'] = str(licitacion.en_plan_anual)
+                valores_despues['En plan anual'] = str(en_plan_anual)
+            licitacion.en_plan_anual = en_plan_anual
+
+            # 👇👇 AGREGA ESTO JUSTO AQUÍ 👇👇
             
+            # --- Justificación Plan Anual ---
+            justificacion_plan = data.get('justificacion_plan', '')
+            
+            # Aseguramos que no sea None para comparar strings
+            val_antiguo = licitacion.justificacion_plan if licitacion.justificacion_plan else ""
+            val_nuevo = justificacion_plan if justificacion_plan else ""
+
+            if val_antiguo != val_nuevo:
+                cambios.append(f"Justificación Plan: '{val_antiguo}' → '{val_nuevo}'")
+                campos_modificados.append('Justificación Plan')
+                valores_antes['Justificación Plan'] = val_antiguo
+                valores_despues['Justificación Plan'] = val_nuevo
+                
+                licitacion.justificacion_plan = val_nuevo
             # --- pedido_devuelto ---
             if 'pedido_devuelto' in data:
                 pedido_devuelto = data.get('pedido_devuelto', False)
@@ -1492,7 +1514,7 @@ def observacion_bitacora_api(request, bitacora_id):
         )
 
     return JsonResponse({'ok': True})
-#agregarproyecto 
+#agregarproyecto y aqui se guarda.
 @csrf_exempt
 def agregar_proyecto(request):
     try:
@@ -1521,6 +1543,7 @@ def agregar_proyecto(request):
             moneda=Moneda.objects.get(id=data.get('moneda')) if data.get('moneda') else None,
             categoria=Categoria.objects.get(id=data.get('categoria')) if data.get('categoria') else None,
             en_plan_anual=data.get('en_plan_anual', False),
+            justificacion_plan=data.get('justificacion_plan', ''), # ◄---- AGREGA ESTA LÍNEA
             iniciativa=data.get('iniciativa', ''),
             direccion=data.get('direccion', ''),
             institucion=data.get('institucion', ''),

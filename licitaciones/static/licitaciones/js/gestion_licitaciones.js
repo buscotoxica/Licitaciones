@@ -374,7 +374,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const btnAgregar = document.getElementById('btnAgregarLicitacion');
     const modalTitulo = document.getElementById('modalTitulo');
     const licitacionFallida = document.getElementById('licitacion-fallida');
-    
+    // AQUI SE CARGA TODO LO QUE QUIERES VER EN EDITAR QUE SE CARGO PREVIAMENTE EN BASE DATOS!
     async function abrirModal(titulo, datos = null) {
         const docsText = document.querySelector('.docs-text');
         const fileInput = document.getElementById('inputDocumentos');
@@ -499,11 +499,27 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         // En plan anual (select sí/no)
         if (datos && datos.en_plan_anual !== undefined) {
-            const enPlanAnualSelect = document.getElementById('enPlanAnualSelect');
-            if (enPlanAnualSelect) {
-                enPlanAnualSelect.value = datos.en_plan_anual === true || datos.en_plan_anual === 'True' ? 'True' : 'False';
-            }
+    const enPlanAnualSelect = document.getElementById('enPlanAnualSelect');
+    const boxJustificacion = document.getElementById('contenedorJustificacion');
+    const inputJustificacion = document.getElementById('justificacionInput');
+
+    if (enPlanAnualSelect) {
+        // Determinamos si es True o False (aceptando 'sí', 'si', true, 'True')
+        const esSi = ['Sí', 'si', 'true', true].includes(String(datos.en_plan_anual).toLowerCase());
+        enPlanAnualSelect.value = esSi ? 'True' : 'False';
+
+        // Lógica de visualización al cargar
+        if (esSi) {
+            boxJustificacion.style.display = 'block';
+            inputJustificacion.required = true;
+            // SI TIENES EL DATO DE JUSTIFICACIÓN EN TU JSON, CARGALO AQUÍ:
+            // inputJustificacion.value = datos.justificacion || ''; 
+        } else {
+            boxJustificacion.style.display = 'none';
+            inputJustificacion.required = false;
         }
+    }
+}
         // Pedido devuelto (checkbox)
         if (datos && datos.pedido_devuelto !== undefined) {
             const pedidoDevueltoCheck = document.getElementById('pedidoDevueltoCheckbox');
@@ -691,6 +707,59 @@ document.addEventListener("DOMContentLoaded", function () {
         asignarTipoPresupuesto();
         // Asegurar que el select de etapas quede con el valor correcto
         if (etapaSeleccionada) etapaSelect.value = etapaSeleccionada;
+
+        const selectPlan = document.getElementById('enPlanAnualSelect');
+    const boxJustificacion = document.getElementById('contenedorJustificacion');
+    const inputJustificacion = document.getElementById('justificacionInput');
+
+    if (selectPlan && boxJustificacion && inputJustificacion) {
+        
+        // Función auxiliar para mostrar/ocultar
+        const toggleJustificacion = (valor) => {
+             // Convertimos a string para comparar fácil
+            const valStr = String(valor).toLowerCase();
+            
+            // Si es 'true', 'sí', 'si' o '1' -> MOSTRAMOS
+            if (['true', 'sí', 'si', '1'].includes(valStr)) {
+                boxJustificacion.style.display = 'block';
+                inputJustificacion.required = true;
+            } else {
+                boxJustificacion.style.display = 'none';
+                inputJustificacion.required = false;
+            }
+        };
+
+        // 2. Establecemos el valor inicial que viene de la base de datos (variable 'datos')
+        // IMPORTANTE: Aquí usamos la variable 'datos' que fallaba antes
+        if (datos && datos.en_plan_anual !== undefined) {
+            
+            // Normalizamos para saber si es True o False
+            let esSi = ['Sí', 'si', 'true', true, 1].includes(datos.en_plan_anual);
+            // Caso especial si viene como string "True"
+            if(String(datos.en_plan_anual).toLowerCase() === 'true') esSi = true;
+
+            const valorFinal = esSi ? 'True' : 'False';
+            
+            // Asignamos al select y ejecutamos la visualización
+            selectPlan.value = valorFinal;
+            toggleJustificacion(valorFinal);
+            
+            // (Opcional) Si tienes el texto de la justificación guardado en 'datos', cárgalo aquí:
+             if (datos.justificacion_plan) {
+                inputJustificacion.value = datos.justificacion_plan;
+            } else {
+                inputJustificacion.value = ''; // Limpia el campo si no hay texto
+            }
+        }
+
+        // 3. Detectamos cuando TÚ cambias el select manualmente
+        selectPlan.onchange = function() {
+            toggleJustificacion(this.value);
+        };
+    }
+    // ---------------------------------------------------------
+    // FIN LÓGICA PLAN ANUAL
+    // ---------------------------------------------------------
     }
 
     const modalSeleccionTipo = document.getElementById('modalSeleccionTipo');
@@ -907,7 +976,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     };
 
-    // ---  BOTONES POR FILA ---
+    // ---  EDITAR  ---
 document.querySelectorAll('.editar-fila').forEach(btn => {
     btn.addEventListener('click', function() {
         const id = this.getAttribute('data-id');
@@ -1054,6 +1123,7 @@ document.querySelectorAll('.editar-fila').forEach(btn => {
             financiamiento: getIdsFromFinanciamientoCell(financiamientoCell),
             numero_cuenta: numeroCuentaCell ? numeroCuentaCell.innerText.trim() : '',
             en_plan_anual: enPlanAnualCell ? (enPlanAnualCell.innerText.trim().toLowerCase() === 'sí' ? 'True' : 'False') : '',
+            justificacion_plan: enPlanAnualCell ? enPlanAnualCell.getAttribute('data-justificacion') : '',
             pedido_devuelto: pedidoDevueltoCell ? (pedidoDevueltoCell.innerText.trim().toLowerCase() === 'sí' ? true : false) : false,
             iniciativa: iniciativaCell ? iniciativaCell.innerText.trim() : '',
             departamento: getIdFromCell(departamentoCell, 'departamentosLicitacion'),

@@ -78,6 +78,7 @@ class Licitacion(models.Model):
     financiamiento = models.ManyToManyField('Financiamiento', related_name='licitaciones', blank=True)
     numero_cuenta = models.CharField(max_length=30, verbose_name="N° de cuenta")
     en_plan_anual = models.BooleanField(default=False, verbose_name="¿Está en el plan anual?")
+    justificacion_plan = models.TextField(blank=True, null=True, verbose_name="Justificación Plan Anual")
     iniciativa = models.CharField(max_length=255, blank=True, null=True)
     departamento = models.ForeignKey('Departamento', on_delete=models.SET_NULL, null=True, blank=True, related_name='licitaciones')
     monto_presupuestado = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Monto Presupuestado")
