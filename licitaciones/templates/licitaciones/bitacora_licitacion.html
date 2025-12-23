@@ -6,6 +6,7 @@
     <title>Bitácora de Licitación</title>
     <link rel="stylesheet" href="{% static 'licitaciones/css/gestion_licitaciones.css' %}">
     <link rel="stylesheet" href="{% static 'licitaciones/css/bitacora_licitacion.css' %}?v=1.1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
     {% include 'licitaciones/sidebar.html' %}
@@ -31,6 +32,12 @@
                             {{ licitacion.estado_fk.nombre|default:'Sin estado' }}
                         </span>
                     </div>
+
+                    <div class="info-item" >
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalInsertarEtapa">
+            <i class="info-label"></i> Insertar Etapa Manual
+        </button>
+    </div>
                 </div>
             </div>
 
@@ -48,6 +55,8 @@
                     <button type="button" class="panel-toggle" id="togglePanelObservacion" title="Minimizar/Expandir">
                         <span class="toggle-icono">▼</span>
                     </button>
+
+                    
                 </div>
                 
                 <div class="panel-contenido" id="contenidoPanelObservacion">
@@ -58,6 +67,7 @@
                         <!-- Información de etapa actual -->
                         <div class="etapa-actual-info">
                             <div class="etapa-label">Etapa actual:</div>
+                            
                             <div class="etapa-display">
                                 <span id="nombreEtapaActual" class="etapa-nombre" data-etapa-id="{{ licitacion.etapa_fk.id }}">
                                     {{ licitacion.etapa_fk.nombre|default:'Sin etapa' }}
@@ -804,6 +814,151 @@
             </form>
         </div>
     </div>
-</body>
 
+
+   <div class="modal fade" id="modalInsertarEtapa" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Configuración del Flujo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="tipo_accion" value="crear_etapa_en_flujo">
+                
+                <div class="modal-body">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">1. Editar Flujo de:</label>
+                            <select class="form-select" name="tipo_licitacion_select" id="miSelectTipo">
+                                {% for tipo in lista_tipos_licitacion %}
+                                    <option value="{{ tipo.id }}" {% if tipo.id == licitacion.tipo_licitacion.id %}selected{% endif %}>
+                                        {{ tipo.nombre }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Orden Actual:</label>
+                        <div class="table-responsive border rounded" style="max-height: 200px; overflow-y: auto;">
+                            <table class="table table-sm table-striped mb-0">
+                                <thead>
+                                    <tr><th style="width:50px;">#</th><th>Nombre Etapa</th></tr>
+                                </thead>
+                                <tbody id="miTablaCuerpo"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold text-primary">2. Insertar DESPUÉS de:</label>
+                            <select class="form-select border-primary" name="etapa_referencia_select" id="miSelectReferencia" required>
+                                </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold text-success">3. Nombre Nueva Etapa:</label>
+                            <input type="text" name="nombre_nueva_etapa" class="form-control border-success" placeholder="Nombre..." required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script id="mis-datos-flujo" type="application/json">
+    {{ json_flujos|safe }}
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 1. LEER LOS DATOS DE FORMA SEGURA
+        var datosFlujos = {};
+        try {
+            var contenidoJson = document.getElementById('mis-datos-flujo').textContent;
+            datosFlujos = JSON.parse(contenidoJson);
+            console.log("✅ Datos cargados correctamente:", datosFlujos);
+        } catch (e) {
+            console.error("❌ Error leyendo el JSON:", e);
+            alert("Error cargando datos de flujo. Revisa la consola.");
+            return;
+        }
+
+        // 2. OBTENER ELEMENTOS DEL DOM
+        var selectTipo = document.getElementById('miSelectTipo');
+        var selectRef = document.getElementById('miSelectReferencia');
+        var tablaBody = document.getElementById('miTablaCuerpo');
+        var etapaActualId = "{{ licitacion.etapa_fk.id|default:'' }}";
+
+        // 3. FUNCIÓN DE ACTUALIZACIÓN
+        function actualizarPantalla() {
+            var tipoId = selectTipo.value; // Esto es un string, ej "1"
+            console.log("Cambio a Tipo ID:", tipoId);
+
+            // Obtenemos el array de etapas (o array vacío si no existe)
+            // IMPORTANTE: Los keys del JSON son strings.
+            var etapas = datosFlujos[tipoId]; 
+
+            // Limpieza
+            tablaBody.innerHTML = '';
+            selectRef.innerHTML = '';
+
+            // Opción por defecto
+            var optDefault = document.createElement('option');
+            optDefault.value = "";
+            optDefault.text = "-- INSERTAR AL INICIO (Será la #1) --";
+            selectRef.appendChild(optDefault);
+
+            if (!etapas || etapas.length === 0) {
+                tablaBody.innerHTML = '<tr><td colspan="2">No hay etapas para este tipo</td></tr>';
+                return;
+            }
+
+            // Llenado
+            etapas.forEach(function(item) {
+                // A. Llenar Tabla
+                var row = '<tr><td>' + item.orden + '</td><td>' + item.nombre_etapa + '</td></tr>';
+                tablaBody.insertAdjacentHTML('beforeend', row);
+
+                // B. Llenar Select
+                var option = document.createElement('option');
+                option.value = item.id_etapa;
+                option.text = item.orden + ". " + item.nombre_etapa;
+
+                // Marcar si es la actual (Comparación segura convirtiendo a String)
+                if (String(item.id_etapa) === String(etapaActualId)) {
+                    option.selected = true;
+                    option.text += " (DONDE ESTOY AHORA)";
+                }
+
+                selectRef.appendChild(option);
+            });
+        }
+
+        // 4. ACTIVAR EVENTOS
+        if(selectTipo) {
+            selectTipo.addEventListener('change', actualizarPantalla);
+            // Ejecutar inmediatamente al cargar
+            actualizarPantalla();
+        } else {
+            console.error("❌ No encontré el select 'miSelectTipo' en el HTML");
+        }
+    });
+</script>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </html>

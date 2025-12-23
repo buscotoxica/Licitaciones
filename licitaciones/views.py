@@ -822,8 +822,52 @@ def bitacora_licitacion(request, licitacion_id):
     paginator = Paginator(bitacora_qs, 10)
     bitacoras = paginator.get_page(page_number)
     
-    if request.method == 'POST' and (es_admin or es_operador or es_operador_manual):
-        # Verificar permisos para operadores
+    if request.method == 'POST':
+        tipo_accion = request.POST.get('tipo_accion')
+
+        # ==========================================================
+        #  NUEVA LÓGICA: INSERTAR ETAPA USANDO 'TipoLicitacionEtapa'
+        # ==========================================================
+        if tipo_accion == 'crear_etapa_en_flujo':
+            nombre_nueva_etapa = request.POST.get('nombre_nueva_etapa')
+            id_tipo_seleccionado = request.POST.get('tipo_licitacion_select') # El tipo elegido en el modal
+            id_etapa_referencia = request.POST.get('etapa_referencia_select') # La etapa "después de la cual" va la nueva
+            tipo_lic_obj = get_object_or_404(TipoLicitacion, id=id_tipo_seleccionado)
+            print(f"Insertando en Tipo: {tipo_lic_obj.nombre}")
+            orden_referencia = 0
+            # 2. Buscar el ORDEN de la etapa actual
+            if id_etapa_referencia:
+                try:
+                    relacion_ref = TipoLicitacionEtapa.objects.get(
+                        tipo_licitacion=tipo_lic_obj,
+                        etapa_id=id_etapa_referencia
+                    )
+                    orden_referencia = relacion_ref.orden
+                    print(f"Referencia seleccionada: {relacion_ref.etapa.nombre} (Orden {orden_referencia})")
+                except TipoLicitacionEtapa.DoesNotExist:
+                    # Si eligió "Al inicio" o falló algo, asumimos orden 0
+                    orden_referencia = 0
+            
+            # 3. HACER ESPACIO (Empujamos las etapas siguientes)
+            TipoLicitacionEtapa.objects.filter(
+                tipo_licitacion=tipo_lic_obj,
+                orden__gt=orden_referencia
+            ).update(orden=F('orden') + 1)
+
+            # 4. CREAR O OBTENER LA ETAPA
+            nueva_etapa_obj, _ = Etapa.objects.get_or_create(nombre=nombre_nueva_etapa)
+
+            # 5. INSERTAR LA RELACIÓN
+            TipoLicitacionEtapa.objects.create(
+                tipo_licitacion=tipo_lic_obj,
+                etapa=nueva_etapa_obj,
+                orden=orden_referencia + 1
+            )
+            
+            messages.success(request, f"Etapa '{nombre_nueva_etapa}' insertada en '{tipo_lic_obj.nombre}' orden {orden_referencia + 1}.")
+            return redirect('bitacora_licitacion', licitacion_id=licitacion_id)
+        
+        
         if (es_operador or es_operador_manual) and not licitacion.puede_operar_usuario(request.user):
             return JsonResponse({
                 'ok': False, 
@@ -902,6 +946,8 @@ def bitacora_licitacion(request, licitacion_id):
         fecha_solicitud_regimen_interno = request.POST.get('fecha_solicitud_regimen_interno', '').strip()
 
         fecha_recepcion_documento_regimen_interno = request.POST.get('fecha_recepcion_documento_regimen_interno', '').strip()
+
+        
 
         fecha_tope_firma_contrato = request.POST.get('fecha_tope_firma_contrato', '').strip()
         # Manejar avance/retroceso de etapa
@@ -1103,6 +1149,34 @@ def bitacora_licitacion(request, licitacion_id):
     for e_inicio, e_fin in licitacion.get_saltar_etapas():
         etapas = [etapa for etapa in etapas if etapa['id'] not in range(e_inicio, e_fin+1)]
     usuarios_disponibles = User.objects.filter(is_active=True).order_by('first_name')
+    lista_etapas_disponibles = Etapa.objects.all().order_by('nombre')
+    # 👇 AGREGAR ESTO AL FINAL: Obtener TODAS las etapas del sistema para el selector
+    catalogo_etapas = Etapa.objects.all().order_by('nombre')
+    todos_tipos = TipoLicitacion.objects.all()
+    
+    # Creamos un diccionario gigante con la estructura: { id_tipo: [lista_etapas] }
+    diccionario_flujos = {}
+    
+    for tipo in todos_tipos:
+        stages = TipoLicitacionEtapa.objects.filter(
+            tipo_licitacion=tipo
+        ).select_related('etapa').order_by('orden')
+        
+        lista_etapas = []
+        for s in stages:
+            lista_etapas.append({
+                'id_etapa': s.etapa.id,
+                'nombre_etapa': s.etapa.nombre,
+                'orden': s.orden
+            })
+        diccionario_flujos[tipo.id] = lista_etapas
+
+    # Convertimos a JSON para que Javascript lo entienda
+    json_flujos = json.dumps(diccionario_flujos)
+    
+    # También pasamos la lista de tipos para el Select
+    lista_tipos_licitacion = todos_tipos
+    
     return render(request, 'licitaciones/bitacora_licitacion.html', {
         'licitacion': licitacion,
         'bitacoras': bitacoras,
@@ -1114,6 +1188,11 @@ def bitacora_licitacion(request, licitacion_id):
         'paginator': paginator,
         'operador_sidebar_nombre': operador_sidebar_nombre,
         'usuarios': usuarios_disponibles, # 👈 2. AGREGAR ESTA LÍNEA AL CONTEXTO
+        'catalogo_etapas': catalogo_etapas,  # <--- AGREGAR AL CONTEXTO
+        'lista_etapas_disponibles': lista_etapas_disponibles, # <--- IMPORTANTE: Agrega esto al context
+        'json_flujos': json_flujos,               # <--- NUEVO
+        'lista_tipos_licitacion': lista_tipos_licitacion, # <--- NUEVO
+        'lista_etapas_disponibles': lista_etapas_disponibles,
     })
 
 @require_POST
