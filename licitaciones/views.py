@@ -851,6 +851,18 @@ def bitacora_licitacion(request, licitacion_id):
 
         id_mercado_publico = request.POST.get('id_mercado_publico', '').strip()
         
+        operador_2_id = request.POST.get('operador_2')
+        
+        if operador_2_id:
+            try:
+                nuevo_op2 = User.objects.get(id=operador_2_id)
+                # Si es diferente al que ya tenía, lo actualizamos y guardamos en bitácora
+                if licitacion.operador_2 != nuevo_op2:
+                    valores['Asignación Operador 2'] = f"{nuevo_op2.first_name} {nuevo_op2.last_name}"
+                    licitacion.operador_2 = nuevo_op2
+                    licitacion.save()
+            except User.DoesNotExist:
+                pass
         # Campos específicos
         fecha_solicitud_intencion_compra = request.POST.get('fecha_solicitud_intencion_compra', '').strip()
 
@@ -1090,6 +1102,7 @@ def bitacora_licitacion(request, licitacion_id):
         etapas = list(Etapa.objects.order_by('id').values('id', 'nombre'))
     for e_inicio, e_fin in licitacion.get_saltar_etapas():
         etapas = [etapa for etapa in etapas if etapa['id'] not in range(e_inicio, e_fin+1)]
+    usuarios_disponibles = User.objects.filter(is_active=True).order_by('first_name')
     return render(request, 'licitaciones/bitacora_licitacion.html', {
         'licitacion': licitacion,
         'bitacoras': bitacoras,
@@ -1100,6 +1113,7 @@ def bitacora_licitacion(request, licitacion_id):
         'es_vizualizador': es_vizualizador,
         'paginator': paginator,
         'operador_sidebar_nombre': operador_sidebar_nombre,
+        'usuarios': usuarios_disponibles, # 👈 2. AGREGAR ESTA LÍNEA AL CONTEXTO
     })
 
 @require_POST

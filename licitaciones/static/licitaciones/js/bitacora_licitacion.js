@@ -1098,7 +1098,8 @@ function wireObservacionForm() {
             const fechaPublicacionMercadoPublico = fechaPublicacionMercadoPublicoInput ? fechaPublicacionMercadoPublicoInput.value.trim() : '';
             const fechaCierreOfertasMercadoPublicoInput = document.getElementById('fechaCierreOfertasMercadoPublicoInput');
             const fechaCierreOfertasMercadoPublico = fechaCierreOfertasMercadoPublicoInput ? fechaCierreOfertasMercadoPublicoInput.value.trim() : '';
-
+            const operador2Input = document.getElementById('operador2Input');
+            const operador2Value = operador2Input ? operador2Input.value : '';
 
 
 
@@ -1261,7 +1262,19 @@ function wireObservacionForm() {
                 etapaInput.value = nombreEtapaActual.dataset.etapaId;
                 form.appendChild(etapaInput);
             }
-
+            if (operador2Value) {
+                // Verificar si ya existe para no duplicar
+                let existingOp2 = form.querySelector('input[name="operador_2"]');
+                if (existingOp2) {
+                    existingOp2.value = operador2Value;
+                } else {
+                    let op2Hidden = document.createElement('input');
+                    op2Hidden.type = 'hidden';
+                    op2Hidden.name = 'operador_2'; // Este nombre debe coincidir con tu views.py
+                    op2Hidden.value = operador2Value;
+                    form.appendChild(op2Hidden);
+                }
+            }
             // Enviar el formulario de manera estándar
             form.submit();
         });

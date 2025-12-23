@@ -424,24 +424,48 @@
                         </div>
                         <!-- Campo ID Mercado Público - se muestra solo en etapa "Publicacion en portal" -->
                         <div id="idMercadoPublicoContainer" class="id-mercado-publico-container hidden">
-                            <label for="idMercadoPublicoInput" class="campo-label">
-                                <span class="label-icono">🏛️</span>
-                                ID Mercado Público:
-                            </label>
-                            <input 
-                                type="text" 
-                                id="idMercadoPublicoInput" 
-                                name="id_mercado_publico" 
-                                class="campoEtapa"
-                                placeholder="(ej: 1234-56-LQ21)"
-                                maxlength="50"
-                                value="{{ licitacion.id_mercado_publico|default:'' }}"
-                            >
-                            <div class="campo-ayuda">
-                                <span class="ayuda-icono">💡</span>
-                                <span class="ayuda-texto">ID único asignado por el portal de mercado público</span>
-                            </div>
-                        </div>
+    
+    <div class="campo-grupo">
+        <label for="idMercadoPublicoInput" class="campo-label">
+            <span class="label-icono">🏛️</span>
+            ID Mercado Público:
+        </label>
+        <input 
+            type="text" 
+            id="idMercadoPublicoInput" 
+            name="id_mercado_publico" 
+            class="campoEtapa"
+            placeholder="(ej: 1234-56-LQ21)"
+            maxlength="50"
+            value="{{ licitacion.id_mercado_publico|default:'' }}"
+        >
+    </div>
+
+    <div class="campo-grupo" style="margin-top: 15px;">
+        <label for="operador2Input" class="campo-label">
+            <span class="label-icono">👥</span>
+            Asignar Operador 2 (Respaldo):
+        </label>
+        <select 
+            id="operador2Input" 
+            name="operador_2" 
+            class="campoEtapa"
+            style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc;"
+        >
+            <option value="">-- Seleccionar Operador --</option>
+            {% for usuario in usuarios %}
+                <option value="{{ usuario.id }}" 
+                    {% if licitacion.operador_2.id == usuario.id %}selected{% endif %}>
+                    {{ usuario.first_name }} {{ usuario.last_name }}
+                </option>
+            {% endfor %}
+        </select>
+        <div class="campo-ayuda">
+            <span class="ayuda-icono">ℹ️</span>
+            <span class="ayuda-texto">Este operador apoyará en la gestión del portal.</span>
+        </div>
+    </div>
+    </div>
                         
                         <!-- Campo de observación -->
                         <div class="observacion-campo">
