@@ -651,22 +651,30 @@ function wireObservacionForm() {
     }
 
     function toggleEtapaButton() {
+        // Validaciones básicas de existencia
+        if (!nombreEtapaActual || !etapas.length) return;
+
         const etapaActualId = parseInt(nombreEtapaActual.dataset.etapaId);
         const currentIndex = etapas.findIndex(e => parseInt(e.id) === etapaActualId);
-        verificarPuedeAvanzar()
-        .then( ({puede_avanzar, ultima_bitacora}) => {
-            if (etapaActualId === parseInt(etapaOriginal.id) || currentIndex === 0) {
-                btnRetrocederEtapa.classList.add('hidden');
-                if (puede_avanzar && checkRequired()) {
-                    btnAvanzarEtapa.classList.remove('hidden');
-                }
-            }
-            else if (currentIndex === etapas.findIndex(e => parseInt(e.id) === parseInt(etapaOriginal.id)) + 1) {
-                btnRetrocederEtapa.classList.remove('hidden');
-                btnAvanzarEtapa.classList.add('hidden');
-            }
-        });
-        
+
+        // 1. Lógica para botón AVANZAR
+        // Se muestra siempre, a menos que ya estemos en la última etapa absoluta del array.
+        // Se eliminaron las condiciones de 'etapaOriginal' y 'verificarPuedeAvanzar'.
+        if (currentIndex < etapas.length - 1) {
+            btnAvanzarEtapa.classList.remove('hidden');
+        } else {
+            btnAvanzarEtapa.classList.add('hidden');
+        }
+
+        // 2. Lógica para botón RETROCEDER
+        // Se muestra siempre que no estemos en la primera etapa (índice 0).
+        // Se eliminó la restricción de volver solo una vez.
+        if (currentIndex > 0) {
+            btnRetrocederEtapa.classList.remove('hidden');
+            btnRetrocederEtapa.style.display = 'inline-flex';
+        } else {
+            btnRetrocederEtapa.classList.add('hidden');
+        }
     }
     // Verificar al cargar la página
     toggleEtapaButton();
@@ -757,18 +765,7 @@ function wireObservacionForm() {
     
     // Mostrar/ocultar botón de retroceder según si puede retroceder
     async function actualizarVisibilidadRetroceder() {
-        if (!btnRetrocederEtapa) return;
-        
-        //const licitacionId = window.location.pathname.match(/\/bitacora\/(\d+)\//)?.[1];
-        const licitacionId = false
-        if (!licitacionId) return;
-        const puedeRetroceder = await verificarPuedeRetroceder(licitacionId);
-        if (puedeRetroceder) {
-            btnRetrocederEtapa.classList.remove('hidden');
-            btnRetrocederEtapa.style.display = 'inline-flex';
-        } else {
-            btnRetrocederEtapa.classList.add('hidden');
-        }
+        return true;
     }
     
     // Configurar el botón de retroceder etapa
