@@ -141,6 +141,7 @@
                         <tr>
                             <th data-col="seleccionar" class="seleccionar-header"></th>
                             <th data-col="iniciativa">Iniciativa</th>
+                            <th data-col="departamento">Depto.</th>
                             <th data-col="numero_pedido">N° de pedido</th>
                             <th data-col="id_mercado_publico">ID Mercado Público</th>
                             <th data-col="orden_compra">Orden de compra</th>
@@ -155,7 +156,7 @@
                             <th data-col="financiamiento">Financiamiento</th>
                             <th data-col="numero_cuenta">N° de cuenta</th>
                             <th data-col="en_plan_anual">En plan anual</th>
-                            <th data-col="departamento">Depto.</th>
+                            
                             <th data-col="monto_presupuestado">Monto Presupuestado general</th>
                             <th data-col="tipo_presupuesto">Tipo por presupuesto</th>
                             <th data-col="llamado_cotizacion">Llamado Cotización</th>
@@ -171,6 +172,7 @@
                     <tr data-id="{{ licitacion.id }}" class="{% if not licitacion.estado_fk or licitacion.estado_fk.id == 1 %} lic-abierta {% else %} lic-cerrada {% endif %}" onclick="document.getElementById('check-{{ licitacion.id }}').click();">
                         <td data-campo="seleccionar" data-col="seleccionar" data-label="Seleccionar"><input type="checkbox" class="licitacion-check" value="{{ licitacion.id }}" id="check-{{ licitacion.id }}" onclick="event.stopPropagation();"/></td>
                         <td data-campo="iniciativa" data-col="iniciativa" data-label="Iniciativa" title="{{ licitacion.iniciativa }}">{{ licitacion.iniciativa }}</td>
+                        <td data-campo="departamento" data-col="departamento" data-label="Departamento">{{ licitacion.departamento.nombre|default:licitacion.departamento }}</td>
                         <td data-campo="numero_pedido" data-col="numero_pedido" data-label="N° de pedido">
     {{ licitacion.numero_pedido }}-{{ licitacion.fecha_creacion|date:"y" }}
 </td>
@@ -228,18 +230,23 @@
     data-label="En plan anual"
     data-justificacion="{{ licitacion.justificacion_plan|default_if_none:'' }}"> {% if licitacion.en_plan_anual %}Sí{% else %}No{% endif %}
 </td>
-                        <td data-campo="departamento" data-col="departamento" data-label="Departamento">{{ licitacion.departamento.nombre|default:licitacion.departamento }}</td>
+                        
                         <td data-campo="monto_presupuestado" data-col="monto_presupuestado" data-label="Monto Presupuestado">${{ licitacion.monto_presupuestado|floatformat:"0"|chilean_thousands }}</td>
                         <td data-campo="tipo_presupuesto" data-col="tipo_presupuesto" data-label="Tipo de presupuesto">{{ licitacion.get_tipo_presupuesto_display }}</td>
                         <td data-campo="llamado_cotizacion" data-col="llamado_cotizacion" data-label="Llamado Cotización">{{ licitacion.get_llamado_cotizacion_display|default:"-" }}</td>
                         <td data-campo="fecha_creacion" data-col="fecha_creacion" data-label="Fecha de creación">{{ licitacion.fecha_creacion|date:"d/m/Y H:i" }}</td>
                         <td data-campo="licitacion_fallida_linkeada" data-col="licitacion_fallida_linkeada" data-label="Licitación Fallida Linkeada">
-                            {% if licitacion.licitacion_fallida_linkeada %}
-                                {{ licitacion.licitacion_fallida_linkeada.numero_pedido }}
-                            {% else %}
-                                <span style="color:#bbb;">-</span>
-                            {% endif %}
-                        </td>
+    {% if licitacion.licitacion_fallida_linkeada %}
+        <a href="{% url 'bitacora_licitacion' licitacion.licitacion_fallida_linkeada.id %}" 
+           onclick="event.stopPropagation();" 
+           title="Ver bitácora de la licitación fallida"
+           style="color: #0d6efd; text-decoration: underline; font-weight: 500;">
+            {{ licitacion.licitacion_fallida_linkeada.numero_pedido }}
+        </a>
+    {% else %}
+        <span style="color:#bbb;">-</span>
+    {% endif %}
+</td>
                         <td data-campo="profesional_a_cargo" style="display:none;">
             {{ licitacion.profesional_a_cargo }}
         </td>

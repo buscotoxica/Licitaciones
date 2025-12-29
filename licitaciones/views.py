@@ -401,15 +401,29 @@ def modificar_licitacion(request, licitacion_id):
                 licitacion.fecha_tentativa_termino = fecha_tentativa_termino
             # Licitacion fallida linkeada
             licitacion_fallida_linkeada_id = data.get('licitacion_fallida_linkeada')
+
+# Obtener el objeto nuevo o None
             licitacion_fallida_linkeada_obj = Licitacion.objects.get(id=licitacion_fallida_linkeada_id) if licitacion_fallida_linkeada_id else None
-            if licitacion.licitacion_fallida_linkeada != licitacion_fallida_linkeada_obj and licitacion_fallida_linkeada_obj:
-                cambios.append(f"Licitación fallida linkeada: '{licitacion.licitacion_fallida_linkeada.numero_pedido}' → '{licitacion_fallida_linkeada_obj.numero_pedido}'")
+
+# Verificamos si hubo algún cambio (ya sea poner una nueva, cambiarla o quitarla)
+            if licitacion.licitacion_fallida_linkeada != licitacion_fallida_linkeada_obj:
+    
+    # 1. Obtenemos el valor ANTERIOR de forma segura
+                valor_anterior = licitacion.licitacion_fallida_linkeada.numero_pedido if licitacion.licitacion_fallida_linkeada else "Ninguna"
+    
+    # 2. Obtenemos el valor NUEVO de forma segura
+                valor_nuevo = licitacion_fallida_linkeada_obj.numero_pedido if licitacion_fallida_linkeada_obj else "Ninguna"
+
+    # 3. Registramos los cambios usando las variables seguras
+                cambios.append(f"Licitación fallida linkeada: '{valor_anterior}' → '{valor_nuevo}'")
                 campos_modificados.append('Licitación fallida linkeada')
-                valores_antes['Licitación fallida linkeada'] = str(licitacion.licitacion_fallida_linkeada.numero_pedido)
-                valores_despues['Licitación fallida linkeada'] = str(licitacion_fallida_linkeada_obj.numero_pedido)
+                valores_antes['Licitación fallida linkeada'] = str(valor_anterior)
+                valores_despues['Licitación fallida linkeada'] = str(valor_nuevo)
+
+# Asignar y guardar
             licitacion.licitacion_fallida_linkeada = licitacion_fallida_linkeada_obj
-            # GUARDAR CAMBIOS EN LA BASE DE DATOS
             licitacion.save()
+            
         # Registrar en bitácora si hubo cambios
         if cambios:
             texto_bitacora += "Campos modificados:" + ''.join([
