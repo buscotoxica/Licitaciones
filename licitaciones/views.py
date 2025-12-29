@@ -418,19 +418,33 @@ def modificar_licitacion(request, licitacion_id):
             ])
             # Financiamiento changes
             if 'Financiamiento' in campos_modificados:
+                # 1. Función auxiliar para limpiar el formato string de set "{1, 2}" a lista [1, 2]
+                def limpiar_ids(texto_set):
+                    if not texto_set: return []
+                    # Quitamos llaves y comillas, luego separamos por comas
+                    limpio = texto_set.replace('{', '').replace('}', '').replace("'", "")
+                    return [int(x) for x in limpio.split(',') if x.strip().isdigit()]
+
+                # 2. Convertimos el texto guardado de vuelta a listas de números
+                ids_antes = limpiar_ids(valores_antes['Financiamiento'])
+                ids_despues = limpiar_ids(valores_despues['Financiamiento'])
+
+                # 3. Consultamos usando las listas limpias
                 financiamiento_antes = ', '.join(
-                    [f.nombre for f in Financiamiento.objects.filter(id__in=valores_antes['Financiamiento'])]
+                    [f.nombre for f in Financiamiento.objects.filter(id__in=ids_antes)]
                 )
                 financiamiento_despues = ', '.join(
-                    [f.nombre for f in Financiamiento.objects.filter(id__in=valores_despues['Financiamiento'])]
+                    [f.nombre for f in Financiamiento.objects.filter(id__in=ids_despues)]
                 )
                 texto_bitacora += f"\n- Financiamiento: '{financiamiento_antes}' → '{financiamiento_despues}'"
+            # --- FIN DE LA CORRECCIÓN ---
 
             BitacoraLicitacion.objects.create(
                 licitacion=licitacion,
                 texto=texto_bitacora,
                 etapa=licitacion.etapa_fk
             )
+            
         return JsonResponse({'ok': True, 'monto_presupuestado': str(licitacion.monto_presupuestado)})
     return JsonResponse({'ok': False}, status=400)
 
@@ -1616,8 +1630,8 @@ def agregar_proyecto(request):
         numero_pedido = data.get('numero_pedido')
         if not numero_pedido:
             return JsonResponse({'ok': False, 'error': 'El N° de pedido es obligatorio.'}, status=400)
-        if Licitacion.objects.filter(numero_pedido=numero_pedido).exists():
-            return JsonResponse({'ok': False, 'error': 'No se puede guardar una licitación con un N° de pedido repetido.'}, status=400)        # Obtener el estado "En curso" (o el que corresponda)
+        # if Licitacion.objects.filter(numero_pedido=numero_pedido).exists():
+        #     return JsonResponse({'ok': False, 'error': 'No se puede guardar una licitación con un N° de pedido repetido.'}, status=400)        # Obtener el estado "En curso" (o el que corresponda)
         estado_en_curso = Estado.objects.filter(nombre__iexact='en curso').first()        # Convertir el monto a número de forma segura
         try:
             monto_presupuestado = float(data.get('monto_presupuestado') or 0)

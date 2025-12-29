@@ -1643,27 +1643,27 @@ formProyecto.onsubmit = async function(e) {
     });    // Movemos la validación al evento onsubmit principal para evitar conflictos
     // La función validarNumeroPedido se usará dentro del onsubmit
     async function validarNumeroPedido() {
-        const numeroPedidoInput = document.getElementById('numeroPedidoInput');
-        if (numeroPedidoInput && numeroPedidoInput.value) {
-            const numeroPedido = numeroPedidoInput.value.trim();
-            // Verificar si el número ya existe (excepto si es edición y no cambió)
-            const idActual = document.getElementById('proyectoId').value;
-            let url = `/api/validar_numero_pedido/?numero_pedido=${encodeURIComponent(numeroPedido)}`;
-            if (idActual) url += `&excluir_id=${idActual}`;
-            try {
-                const res = await fetch(url);
-                const data = await res.json();
-                if (data.exists) {
-                    alert('El N° de pedido ya está en uso por otra licitación. Debe ingresar uno único.');
-                    numeroPedidoInput.focus();
-                    return false;
-                }
-                return true;
-            } catch (error) {
-                console.error("Error validando número de pedido:", error);
-                return false;
-            }
-        }
+        // const numeroPedidoInput = document.getElementById('numeroPedidoInput');
+        // if (numeroPedidoInput && numeroPedidoInput.value) {
+        //     const numeroPedido = numeroPedidoInput.value.trim();
+        //     // Verificar si el número ya existe (excepto si es edición y no cambió)
+        //     const idActual = document.getElementById('proyectoId').value;
+        //     let url = `/api/validar_numero_pedido/?numero_pedido=${encodeURIComponent(numeroPedido)}`;
+        //     if (idActual) url += `&excluir_id=${idActual}`;
+        //     try {
+        //         const res = await fetch(url);
+        //         const data = await res.json();
+        //         if (data.exists) {
+        //             alert('El N° de pedido ya está en uso por otra licitación. Debe ingresar uno único.');
+        //             numeroPedidoInput.focus();
+        //             return false;
+        //         }
+        //         return true;
+        //     } catch (error) {
+        //         console.error("Error validando número de pedido:", error);
+        //         return false;
+        //     }
+        // }
         return true; // Si no hay número de pedido, consideramos válido
     }
 
