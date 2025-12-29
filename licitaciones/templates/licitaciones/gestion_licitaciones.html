@@ -200,20 +200,24 @@
                             {{ licitacion.etapa_fk.nombre|default:'' }}
                         </td>
                         <td data-campo="estado" data-col="estado" data-label="Estado">
-                            {% if licitacion.estado_fk %}
-                                {% if licitacion.estado_fk.nombre == 'Fallida' and licitacion.tipo_fallida %}
-                                    <span class="estado-badge estado-fallida">
-                                        {{ licitacion.get_tipo_fallida_display }}
-                                    </span>
-                                {% else %}
-                                    <span class="estado-badge estado-{{ licitacion.estado_fk.nombre|slugify }}">
-                                        {{ licitacion.estado_fk.nombre }}
-                                    </span>
-                                {% endif %}
-                            {% else %}
-                                <span class="estado-badge estado-vacio">Sin estado</span>
-                            {% endif %}
-                        </td>
+    {% if licitacion.etapa_fk.nombre == "Compra finalizada" %}
+        <span class="estado-badge estado-cerrada">
+            Cerrada
+        </span>
+    {% elif licitacion.estado_fk %}
+        {% if licitacion.estado_fk.nombre == 'Fallida' and licitacion.tipo_fallida %}
+            <span class="estado-badge estado-fallida">
+                {{ licitacion.get_tipo_fallida_display }}
+            </span>
+        {% else %}
+            <span class="estado-badge estado-{{ licitacion.estado_fk.nombre|slugify }}">
+                {{ licitacion.estado_fk.nombre }}
+            </span>
+        {% endif %}
+    {% else %}
+        <span class="estado-badge estado-vacio">Sin estado</span>
+    {% endif %}
+</td>
                         <td data-campo="tipo_licitacion" data-col="tipo_licitacion" data-label="Tipo de Licitación">{{ licitacion.tipo_licitacion.nombre }}</td>
                         <td data-campo="moneda" data-col="moneda" data-label="Moneda">{{ licitacion.moneda.nombre|default:'' }}</td>
                         <td data-campo="categoria" data-col="categoria" data-label="Categoría">{{ licitacion.categoria.nombre|default:'' }}</td>
