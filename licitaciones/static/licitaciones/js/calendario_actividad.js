@@ -288,7 +288,7 @@
             html += `<div class="calendario-dia otro-mes"><div class="dia-numero">${dia}</div></div>`;
         }
         
-        // Días del mes actual
+        // Días del mes actual, MAS TITULO EN CALENDARIIO
         const hoy = new Date();
         for (let dia = 1; dia <= ultimoDia; dia++) {
             const fecha = `${año}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
@@ -300,12 +300,12 @@
                 <div class="calendario-dia ${esHoy ? 'hoy' : ''}" data-fecha="${fecha}">
                     <div class="dia-numero">${dia}</div>
                     <div class="dia-eventos">
-                        ${eventos.slice(0, 3).map(evento => `
+                        ${eventos.slice(0, 20).map(evento => `
                             <div class="evento-item ${evento.tipo}" data-evento='${JSON.stringify(evento).replace(/'/g, "&apos;")}'>
-                                ${evento.titulo.length > 15 ? evento.titulo.substring(0, 12) + '...' : evento.titulo}
+                                ${evento.titulo.length > 25 ? evento.titulo.substring(0, 12) + '...' : evento.titulo}
                             </div>
                         `).join('')}
-                        ${eventos.length > 3 ? `<div class="eventos-contador">+${eventos.length - 3} más</div>` : ''}
+                        ${eventos.length > 20  ? `<div class="eventos-contador">+${eventos.length - 20} más</div>` : ''}
                     </div>
                 </div>
             `;
@@ -509,3 +509,4 @@
     }
 
 })();
+

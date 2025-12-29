@@ -44,6 +44,7 @@ from .models import Licitacion, Etapa, BitacoraLicitacion, Estado, DocumentoLici
 from .models import TipoLicitacionEtapa
 from django.db import models
 from django.http import JsonResponse
+from django.db.models import Q
 
 
 @login_required
@@ -2300,7 +2301,7 @@ def calendario_actividad(request):
 
 @require_GET
 def obtener_eventos_calendario(request):
-    """API para obtener eventos del calendario"""
+    """API para obtener eventos de fechas clave del calendario"""
     # Verificar que sea admin
     perfil = getattr(request.user, 'perfil', None)
     if not perfil or perfil.rol != 'admin':
@@ -2308,113 +2309,81 @@ def obtener_eventos_calendario(request):
     
     try:
         # Obtener parámetros de fecha
-        año = request.GET.get('año', timezone.now().year)
+        año = int(request.GET.get('año', timezone.now().year))
         mes = request.GET.get('mes', None)
-        
-        año = int(año)
         if mes:
             mes = int(mes)
         
         eventos = []
         
-        # 1. Eventos de creación de licitaciones
-        # Obtener fechas de inicio y fin para el filtro en zona horaria local
+        # Calcular rangos de fecha (Objetos datetime conscientes de zona horaria)
         if mes:
-            # Filtrar por año y mes específico
             fecha_inicio = timezone.make_aware(datetime(año, mes, 1))
             if mes == 12:
                 fecha_fin = timezone.make_aware(datetime(año + 1, 1, 1))
             else:
                 fecha_fin = timezone.make_aware(datetime(año, mes + 1, 1))
-
-            licitaciones_query = Licitacion.objects.select_related('operador_user', 'tipo_licitacion').filter(
-                fecha_creacion__gte=fecha_inicio,
-                fecha_creacion__lt=fecha_fin
-            )
         else:
-            # Filtrar solo por año
             fecha_inicio = timezone.make_aware(datetime(año, 1, 1))
             fecha_fin = timezone.make_aware(datetime(año + 1, 1, 1))
-            
-            licitaciones_query = Licitacion.objects.select_related('operador_user', 'tipo_licitacion').filter(
-                fecha_creacion__gte=fecha_inicio,
-                fecha_creacion__lt=fecha_fin
-            )
-        
-        for licitacion in licitaciones_query:
-            # Convertir a zona horaria local
-            fecha_local = timezone.localtime(licitacion.fecha_creacion)
-            eventos.append({
-                'tipo': 'creacion',
-                'fecha': fecha_local.strftime('%Y-%m-%d'),
-                'hora': fecha_local.strftime('%H:%M'),
-                'titulo': f'Licitación creada: {licitacion.numero_pedido}',
-                'descripcion': f'{licitacion.iniciativa or "Sin iniciativa"}',
-                'operador': str(licitacion.operador_user) if licitacion.operador_user else 'Sin operador',
-                'tipo_licitacion': str(licitacion.tipo_licitacion),
-                'licitacion_id': licitacion.id,
-                'color': '#28a745'  # Verde para creaciones
-            })
-        
-        # 2. Eventos de observaciones/cambios de etapa
-        # Aplicar el mismo filtro de fechas para bitácoras
-        if mes:
-            bitacoras_query = BitacoraLicitacion.objects.select_related(
-                'licitacion', 'operador_user', 'etapa'
-            ).filter(
-                fecha__gte=fecha_inicio,
-                fecha__lt=fecha_fin
-            )
-        else:
-            bitacoras_query = BitacoraLicitacion.objects.select_related(
-                'licitacion', 'operador_user', 'etapa'
-            ).filter(
-                fecha__gte=fecha_inicio,
-                fecha__lt=fecha_fin
-            )
-        
-        for bitacora in bitacoras_query:
-            # Convertir a zona horaria local
-            fecha_local = timezone.localtime(bitacora.fecha)
-            
-            # Determinar tipo de evento
-            texto_lower = bitacora.texto.lower()
-            if 'etapa' in texto_lower and ('cambió' in texto_lower or 'avanzó' in texto_lower or 'retrocedió' in texto_lower):
-                tipo_evento = 'cambio_etapa'
-                color = '#007bff'  # Azul para cambios de etapa
-                icono = '📈'
-            elif 'fallida' in texto_lower or 'cerrada' in texto_lower:
-                tipo_evento = 'cierre'
-                color = '#dc3545'  # Rojo para cierres
-                icono = '❌'
-            else:
-                tipo_evento = 'observacion'
-                color = '#ffc107'  # Amarillo para observaciones
-                icono = '📝'
-            
-            eventos.append({
-                'tipo': tipo_evento,
-                'fecha': fecha_local.strftime('%Y-%m-%d'),
-                'hora': fecha_local.strftime('%H:%M'),
-                'titulo': f'{icono} Licitación {bitacora.licitacion.numero_pedido}',
-                'descripcion': bitacora.texto[:100] + ('...' if len(bitacora.texto) > 100 else ''),
-                'operador': str(bitacora.operador_user) if bitacora.operador_user else 'Sistema',
-                'etapa': str(bitacora.etapa) if bitacora.etapa else 'Sin etapa',
-                'licitacion_id': bitacora.licitacion.id,
-                'bitacora_id': bitacora.id,
-                'color': color
-            })
-        
-        # Ordenar eventos por fecha y hora
-        eventos.sort(key=lambda x: f"{x['fecha']} {x['hora']}", reverse=True)
+
+        # Convertimos a .date() para comparar con DateFields en la BD
+        date_inicio = fecha_inicio.date()
+        date_fin = fecha_fin.date()
+
+        # Configuración de los campos que queremos buscar
+        # (Nombre Campo BD, Título Evento, Color, Icono)
+        campos_config = [
+            ('fecha_cierre_preguntas_publicacionportal', 'Cierre Preguntas Portal', '#ffc107', '❓'), # Amarillo
+            ('fecha_respuesta_publicacionportal', 'Respuestas Portal', '#17a2b8', '💬'),      # Cyan
+            ('fecha_cierre_oferta_publicacionportal', 'Cierre Ofertas Portal', '#dc3545', '🛑'),   # Rojo
+            ('fecha_estimada_adjudicacion_publicacionportal', 'Est. Adjudicación', '#007bff', '🏆'), # Azul
+            ('fecha_cierre_ofertas_mercado_publico', 'Cierre Ofertas MP', '#fd7e14', '🛒'),     # Naranja
+            ('fecha_tope_firma_contrato', 'Tope Firma Contrato', '#28a745', '✍️'),          # Verde
+        ]
+
+        # 1. Construir consulta dinámica (OR)
+        # Buscamos licitaciones donde AL MENOS UNA de las fechas caiga en el rango
+        query = Q()
+        for campo, _, _, _ in campos_config:
+            # campo__range incluye los extremos, restamos 1 día al fin para que sea exacto al mes
+            query |= Q(**{f"{campo}__range": (date_inicio, date_fin - timedelta(days=1))})
+
+        # 2. Ejecutar consulta
+        licitaciones = Licitacion.objects.filter(query).select_related('operador_user')
+
+        # 3. Procesar resultados
+        for lic in licitaciones:
+            # Revisamos cada campo configurado para ver si esta licitación tiene fecha en este mes
+            for campo_bd, titulo_evento, color_evento, icono in campos_config:
+                fecha_valor = getattr(lic, campo_bd, None)
+                
+                if fecha_valor and date_inicio <= fecha_valor < date_fin:
+                    # Crear el evento
+                    eventos.append({
+                        'tipo': 'vencimiento',
+                        'fecha': fecha_valor.strftime('%Y-%m-%d'),
+                        'hora': '23:59', # Asumimos final del día para plazos
+                        'titulo': f"{icono} {titulo_evento}",
+                        'descripcion': f"Licitación: {lic.numero_pedido or 'S/N'}\nIniciativa: {lic.iniciativa or '---'}\nOperador: {lic.operador_user or 'Sin asignar'}",
+                        'operador': str(lic.operador_user) if lic.operador_user else 'Sistema',
+                        'etapa': str(lic.etapa_fk) if lic.etapa_fk else 'Sin etapa',
+                        'licitacion_id': lic.id,
+                        'color': color_evento
+                    })
+
+        # Ordenar eventos por fecha
+        eventos.sort(key=lambda x: x['fecha'])
         
         return JsonResponse({
-            'ok': True,
-            'eventos': eventos,
+            'ok': True, 
+            'eventos': eventos, 
             'total': len(eventos)
         })
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'ok': False, 'error': str(e)}, status=500)
 
 @csrf_exempt
