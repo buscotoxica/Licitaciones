@@ -146,7 +146,7 @@
                             <th data-col="id_mercado_publico">ID Mercado Público</th>
                             <th data-col="orden_compra">Orden de compra</th>
                             <th data-col="fecha_tentativa_termino">Fecha tentativa de término</th>
-                            <th data-col="fecha_estimada_adjudicacion">Fecha estimada de adjudicación</th>
+                            {% comment %} <th data-col="fecha_estimada_adjudicacion">Fecha estimada de adjudicación</th> {% endcomment %}
                             <th data-col="operadores">Profesionales a Cargo</th>
                             <th data-col="etapa">Etapa</th>
                             <th data-col="estado">Status</th>
@@ -179,7 +179,7 @@
                         <td data-campo="id_mercado_publico" data-col="id_mercado_publico" data-label="ID Mercado Público">{{ licitacion.id_mercado_publico|default:"-" }}</td>
                         <td data-campo="orden_compra" data-col="orden_compra" data-label="Orden de compra">{{ licitacion.orden_compra_adjudicacion|default:"-" }}</td>
                         <td data-campo="fecha_tentativa_termino" data-col="fecha_tentativa_termino" data-label="Fecha tentativa de término">{{ licitacion.fecha_tentativa_termino|date:"d/m/Y" }}</td>
-                        <td data-campo="fecha_estimada_adjudicacion" data-col="fecha_estimada_adjudicacion" data-label="Fecha estimada de adjudicación" >{{ licitacion.fecha_estimada_adjudicacion_publicacionportal|date:"d/m/Y"|default:"-" }}</td>
+                        {% comment %} <td data-campo="fecha_estimada_adjudicacion" data-col="fecha_estimada_adjudicacion" data-label="Fecha estimada de adjudicación" >{{ licitacion.fecha_estimada_adjudicacion_publicacionportal|date:"d/m/Y"|default:"-" }}</td> {% endcomment %}
                         <td data-campo="operadores" data-col="operadores" data-label="Profesionales a Cargo">
                             <div class="operadores-container">
                                 <span class="operador-badge operador-1 {% if licitacion.get_numero_operador_activo == 1 %}activo{% endif %}" title="Operador 1: Gestiona hasta Evaluación de Ofertas" data-id="{{ licitaciones. }}">
