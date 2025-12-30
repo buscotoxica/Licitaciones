@@ -44,6 +44,7 @@ from .models import Licitacion, Etapa, BitacoraLicitacion, Estado, DocumentoLici
 from .models import TipoLicitacionEtapa
 from django.db import models
 from django.http import JsonResponse
+from django.db.models import Q
 
 
 @login_required
@@ -193,7 +194,29 @@ def modificar_licitacion(request, licitacion_id):
                     valores_antes['En plan anual'] = str(licitacion.en_plan_anual)
                     valores_despues['En plan anual'] = str(en_plan_anual)
                 licitacion.en_plan_anual = en_plan_anual
+            if licitacion.en_plan_anual != en_plan_anual:
+                cambios.append(f"En plan anual: '{licitacion.en_plan_anual}' → '{en_plan_anual}'")
+                campos_modificados.append('En plan anual')
+                valores_antes['En plan anual'] = str(licitacion.en_plan_anual)
+                valores_despues['En plan anual'] = str(en_plan_anual)
+            licitacion.en_plan_anual = en_plan_anual
+
+            # 👇👇 AGREGA ESTO JUSTO AQUÍ 👇👇
             
+            # --- Justificación Plan Anual ---
+            justificacion_plan = data.get('justificacion_plan', '')
+            
+            # Aseguramos que no sea None para comparar strings
+            val_antiguo = licitacion.justificacion_plan if licitacion.justificacion_plan else ""
+            val_nuevo = justificacion_plan if justificacion_plan else ""
+
+            if val_antiguo != val_nuevo:
+                cambios.append(f"Justificación Plan: '{val_antiguo}' → '{val_nuevo}'")
+                campos_modificados.append('Justificación Plan')
+                valores_antes['Justificación Plan'] = val_antiguo
+                valores_despues['Justificación Plan'] = val_nuevo
+                
+                licitacion.justificacion_plan = val_nuevo
             # --- pedido_devuelto ---
             if 'pedido_devuelto' in data:
                 pedido_devuelto = data.get('pedido_devuelto', False)
@@ -263,7 +286,19 @@ def modificar_licitacion(request, licitacion_id):
                 valores_antes['N° de pedido'] = str(licitacion.numero_pedido)
                 valores_despues['N° de pedido'] = str(numero_pedido)
                 licitacion.numero_pedido = numero_pedido
+
+            #  ⬇️ AGREGAR ESTO: Lógica para Profesional a Cargo ⬇️
+            profesional_nuevo = data.get('profesional_a_cargo')
             
+            # Comparamos para guardar en la bitácora si cambió
+            if profesional_nuevo is not None and str(licitacion.profesional_a_cargo or '') != str(profesional_nuevo):
+                cambios.append(f"Profesional a Cargo: '{licitacion.profesional_a_cargo or ''}' → '{profesional_nuevo}'")
+                campos_modificados.append('Profesional a Cargo')
+                valores_antes['Profesional a Cargo'] = str(licitacion.profesional_a_cargo or '')
+                valores_despues['Profesional a Cargo'] = str(profesional_nuevo)
+                
+                # Asignar el valor
+                licitacion.profesional_a_cargo = profesional_nuevo
             # ID Mercado Público
             id_mercado_publico = data.get('id_mercado_publico', '')
             if licitacion.id_mercado_publico != id_mercado_publico:
@@ -323,6 +358,39 @@ def modificar_licitacion(request, licitacion_id):
                 valores_antes['N° de cuenta'] = str(licitacion.tipo_presupuesto)
                 valores_despues['N° de cuenta'] = str(tipo_presupuesto)
                 licitacion.tipo_presupuesto = tipo_presupuesto
+
+            fecha_creacion_str = data.get('fecha_creacion')
+            if fecha_creacion_str:
+                from datetime import datetime
+                from django.utils import timezone
+                
+                # Convertimos el string "YYYY-MM-DD" a objeto datetime
+                try:
+                    # Parseamos la fecha que viene del input date
+                    fecha_nueva_date = datetime.strptime(fecha_creacion_str, '%Y-%m-%d').date()
+                    
+                    # Como el modelo es DateTimeField, necesitamos combinar con hora (00:00:00)
+                    # o mantener la hora que ya tenía si quieres ser muy preciso, 
+                    # pero para "Fecha Asignación" suele bastar resetear la hora.
+                    fecha_nueva_dt = datetime.combine(fecha_nueva_date, datetime.min.time())
+                    
+                    # Hacemos la fecha "aware" (con zona horaria) si Django lo requiere
+                    if timezone.is_naive(fecha_nueva_dt):
+                        fecha_nueva_dt = timezone.make_aware(fecha_nueva_dt)
+
+                    # Comparamos (usamos .date() para comparar solo el día y evitar ruido por horas)
+                    if licitacion.fecha_creacion.date() != fecha_nueva_dt.date():
+                        fecha_antes_str = licitacion.fecha_creacion.strftime('%d-%m-%Y')
+                        fecha_nueva_fmt = fecha_nueva_dt.strftime('%d-%m-%Y')
+                        
+                        cambios.append(f"Fecha Asignación: '{fecha_antes_str}' → '{fecha_nueva_fmt}'")
+                        campos_modificados.append('Fecha Asignación')
+                        valores_antes['Fecha Asignación'] = fecha_antes_str
+                        valores_despues['Fecha Asignación'] = fecha_nueva_fmt
+                        
+                        licitacion.fecha_creacion = fecha_nueva_dt
+                except ValueError:
+                    pass # Si la fecha viene vacía o mal formada, la ignoramos
             fecha_tentativa_termino = get_fecha_tentativa_termino(data.get('tipo_presupuesto', ''), licitacion.fecha_creacion.date())
             if licitacion.fecha_tentativa_termino != fecha_tentativa_termino:
                 if (licitacion.fecha_tentativa_termino):
@@ -333,15 +401,29 @@ def modificar_licitacion(request, licitacion_id):
                 licitacion.fecha_tentativa_termino = fecha_tentativa_termino
             # Licitacion fallida linkeada
             licitacion_fallida_linkeada_id = data.get('licitacion_fallida_linkeada')
+
+# Obtener el objeto nuevo o None
             licitacion_fallida_linkeada_obj = Licitacion.objects.get(id=licitacion_fallida_linkeada_id) if licitacion_fallida_linkeada_id else None
-            if licitacion.licitacion_fallida_linkeada != licitacion_fallida_linkeada_obj and licitacion_fallida_linkeada_obj:
-                cambios.append(f"Licitación fallida linkeada: '{licitacion.licitacion_fallida_linkeada.numero_pedido}' → '{licitacion_fallida_linkeada_obj.numero_pedido}'")
+
+# Verificamos si hubo algún cambio (ya sea poner una nueva, cambiarla o quitarla)
+            if licitacion.licitacion_fallida_linkeada != licitacion_fallida_linkeada_obj:
+    
+    # 1. Obtenemos el valor ANTERIOR de forma segura
+                valor_anterior = licitacion.licitacion_fallida_linkeada.numero_pedido if licitacion.licitacion_fallida_linkeada else "Ninguna"
+    
+    # 2. Obtenemos el valor NUEVO de forma segura
+                valor_nuevo = licitacion_fallida_linkeada_obj.numero_pedido if licitacion_fallida_linkeada_obj else "Ninguna"
+
+    # 3. Registramos los cambios usando las variables seguras
+                cambios.append(f"Licitación fallida linkeada: '{valor_anterior}' → '{valor_nuevo}'")
                 campos_modificados.append('Licitación fallida linkeada')
-                valores_antes['Licitación fallida linkeada'] = str(licitacion.licitacion_fallida_linkeada.numero_pedido)
-                valores_despues['Licitación fallida linkeada'] = str(licitacion_fallida_linkeada_obj.numero_pedido)
+                valores_antes['Licitación fallida linkeada'] = str(valor_anterior)
+                valores_despues['Licitación fallida linkeada'] = str(valor_nuevo)
+
+# Asignar y guardar
             licitacion.licitacion_fallida_linkeada = licitacion_fallida_linkeada_obj
-            # GUARDAR CAMBIOS EN LA BASE DE DATOS
             licitacion.save()
+            
         # Registrar en bitácora si hubo cambios
         if cambios:
             texto_bitacora += "Campos modificados:" + ''.join([
@@ -350,19 +432,33 @@ def modificar_licitacion(request, licitacion_id):
             ])
             # Financiamiento changes
             if 'Financiamiento' in campos_modificados:
+                # 1. Función auxiliar para limpiar el formato string de set "{1, 2}" a lista [1, 2]
+                def limpiar_ids(texto_set):
+                    if not texto_set: return []
+                    # Quitamos llaves y comillas, luego separamos por comas
+                    limpio = texto_set.replace('{', '').replace('}', '').replace("'", "")
+                    return [int(x) for x in limpio.split(',') if x.strip().isdigit()]
+
+                # 2. Convertimos el texto guardado de vuelta a listas de números
+                ids_antes = limpiar_ids(valores_antes['Financiamiento'])
+                ids_despues = limpiar_ids(valores_despues['Financiamiento'])
+
+                # 3. Consultamos usando las listas limpias
                 financiamiento_antes = ', '.join(
-                    [f.nombre for f in Financiamiento.objects.filter(id__in=valores_antes['Financiamiento'])]
+                    [f.nombre for f in Financiamiento.objects.filter(id__in=ids_antes)]
                 )
                 financiamiento_despues = ', '.join(
-                    [f.nombre for f in Financiamiento.objects.filter(id__in=valores_despues['Financiamiento'])]
+                    [f.nombre for f in Financiamiento.objects.filter(id__in=ids_despues)]
                 )
                 texto_bitacora += f"\n- Financiamiento: '{financiamiento_antes}' → '{financiamiento_despues}'"
+            # --- FIN DE LA CORRECCIÓN ---
 
             BitacoraLicitacion.objects.create(
                 licitacion=licitacion,
                 texto=texto_bitacora,
                 etapa=licitacion.etapa_fk
             )
+            
         return JsonResponse({'ok': True, 'monto_presupuestado': str(licitacion.monto_presupuestado)})
     return JsonResponse({'ok': False}, status=400)
 
@@ -755,8 +851,52 @@ def bitacora_licitacion(request, licitacion_id):
     paginator = Paginator(bitacora_qs, 10)
     bitacoras = paginator.get_page(page_number)
     
-    if request.method == 'POST' and (es_admin or es_operador or es_operador_manual):
-        # Verificar permisos para operadores
+    if request.method == 'POST':
+        tipo_accion = request.POST.get('tipo_accion')
+
+        # ==========================================================
+        #  NUEVA LÓGICA: INSERTAR ETAPA USANDO 'TipoLicitacionEtapa'
+        # ==========================================================
+        if tipo_accion == 'crear_etapa_en_flujo':
+            nombre_nueva_etapa = request.POST.get('nombre_nueva_etapa')
+            id_tipo_seleccionado = request.POST.get('tipo_licitacion_select') # El tipo elegido en el modal
+            id_etapa_referencia = request.POST.get('etapa_referencia_select') # La etapa "después de la cual" va la nueva
+            tipo_lic_obj = get_object_or_404(TipoLicitacion, id=id_tipo_seleccionado)
+            print(f"Insertando en Tipo: {tipo_lic_obj.nombre}")
+            orden_referencia = 0
+            # 2. Buscar el ORDEN de la etapa actual
+            if id_etapa_referencia:
+                try:
+                    relacion_ref = TipoLicitacionEtapa.objects.get(
+                        tipo_licitacion=tipo_lic_obj,
+                        etapa_id=id_etapa_referencia
+                    )
+                    orden_referencia = relacion_ref.orden
+                    print(f"Referencia seleccionada: {relacion_ref.etapa.nombre} (Orden {orden_referencia})")
+                except TipoLicitacionEtapa.DoesNotExist:
+                    # Si eligió "Al inicio" o falló algo, asumimos orden 0
+                    orden_referencia = 0
+            
+            # 3. HACER ESPACIO (Empujamos las etapas siguientes)
+            TipoLicitacionEtapa.objects.filter(
+                tipo_licitacion=tipo_lic_obj,
+                orden__gt=orden_referencia
+            ).update(orden=F('orden') + 1)
+
+            # 4. CREAR O OBTENER LA ETAPA
+            nueva_etapa_obj, _ = Etapa.objects.get_or_create(nombre=nombre_nueva_etapa)
+
+            # 5. INSERTAR LA RELACIÓN
+            TipoLicitacionEtapa.objects.create(
+                tipo_licitacion=tipo_lic_obj,
+                etapa=nueva_etapa_obj,
+                orden=orden_referencia + 1
+            )
+            
+            messages.success(request, f"Etapa '{nombre_nueva_etapa}' insertada en '{tipo_lic_obj.nombre}' orden {orden_referencia + 1}.")
+            return redirect('bitacora_licitacion', licitacion_id=licitacion_id)
+        
+        
         if (es_operador or es_operador_manual) and not licitacion.puede_operar_usuario(request.user):
             return JsonResponse({
                 'ok': False, 
@@ -784,6 +924,18 @@ def bitacora_licitacion(request, licitacion_id):
 
         id_mercado_publico = request.POST.get('id_mercado_publico', '').strip()
         
+        operador_2_id = request.POST.get('operador_2')
+        
+        if operador_2_id:
+            try:
+                nuevo_op2 = User.objects.get(id=operador_2_id)
+                # Si es diferente al que ya tenía, lo actualizamos y guardamos en bitácora
+                if licitacion.operador_2 != nuevo_op2:
+                    valores['Asignación Operador 2'] = f"{nuevo_op2.first_name} {nuevo_op2.last_name}"
+                    licitacion.operador_2 = nuevo_op2
+                    licitacion.save()
+            except User.DoesNotExist:
+                pass
         # Campos específicos
         fecha_solicitud_intencion_compra = request.POST.get('fecha_solicitud_intencion_compra', '').strip()
 
@@ -824,11 +976,16 @@ def bitacora_licitacion(request, licitacion_id):
 
         fecha_recepcion_documento_regimen_interno = request.POST.get('fecha_recepcion_documento_regimen_interno', '').strip()
 
+        
         fecha_tope_firma_contrato = request.POST.get('fecha_tope_firma_contrato', '').strip()
-        # Manejar avance/retroceso de etapa
         accion_etapa = request.POST.get('accion_etapa')
-        if request.POST.get('redestinar', '')=='true' and etapa_obj:
+        es_redestinacion = request.POST.get('redestinar', '') == 'true'
+
+
+        # --- 1. Lógica de Limpieza (Solo si es Redestinar) ---
+        if es_redestinacion and etapa_obj:
             valores['Redestinado'] = str(etapa_nombre)
+            # Limpiar datos futuros para reiniciar el proceso
             if licitacion.tipo_licitacion and 'trato directo' in licitacion.tipo_licitacion.nombre.lower().strip():
                 licitacion.fecha_disponibilidad_presupuestaria = None
             licitacion.fecha_evaluacion_cotizacion = None
@@ -849,13 +1006,52 @@ def bitacora_licitacion(request, licitacion_id):
             licitacion.fecha_tope_firma_contrato = None
             fecha_tope_firma_contrato = None
             licitacion.save()
-        if accion_etapa == 'advance' and etapa_obj:
-            licitacion.etapa_fk = etapa_obj
-            licitacion.save()
-        elif accion_etapa == 'retreat' and etapa_obj:
-            licitacion.etapa_fk = etapa_obj
-            licitacion.save()
 
+        # --- 2. Lógica de "El Puntero" (¿Se mueve la etapa actual?) ---
+        if etapa_obj:
+            debe_cambiar_etapa = False # Por seguridad, empezamos en NO
+
+            # A. Si es Redestinación -> SIEMPRE CAMBIA (Retrocede/Reinicia)
+            if es_redestinacion:
+                debe_cambiar_etapa = True
+            
+            # B. Si no tiene etapa actual -> SIEMPRE CAMBIA (Inicializa)
+            elif not licitacion.etapa_fk:
+                debe_cambiar_etapa = True
+
+            # C. Caso Normal: Comparar órdenes matemáticamente
+            else:
+                try:
+                    rel_actual = TipoLicitacionEtapa.objects.filter(
+                        tipo_licitacion=licitacion.tipo_licitacion, 
+                        etapa=licitacion.etapa_fk
+                    ).first()
+                    
+                    rel_nueva = TipoLicitacionEtapa.objects.filter(
+                        tipo_licitacion=licitacion.tipo_licitacion, 
+                        etapa=etapa_obj
+                    ).first()
+
+                    if rel_actual and rel_nueva:
+                        # Si la NUEVA es MAYOR que la ACTUAL -> AVANZA
+                        if rel_nueva.orden > rel_actual.orden:
+                            debe_cambiar_etapa = True
+                        
+                        # Si la NUEVA es MENOR o IGUAL -> NO HACE NADA (Se queda en la avanzada)
+                        else:
+                            debe_cambiar_etapa = False
+                    else:
+                        # Si no hay configuración de orden, mejor no mover por seguridad
+                        debe_cambiar_etapa = False
+                        
+                except Exception as e:
+                    print(f"Error calculando orden: {e}")
+                    debe_cambiar_etapa = False
+
+            # --- Ejecutar cambio si corresponde ---
+            if debe_cambiar_etapa:
+                licitacion.etapa_fk = etapa_obj
+                licitacion.save()
         # Actualizar información adicional para ciertas etapas
         if id_mercado_publico:
             licitacion.id_mercado_publico = id_mercado_publico
@@ -1023,6 +1219,35 @@ def bitacora_licitacion(request, licitacion_id):
         etapas = list(Etapa.objects.order_by('id').values('id', 'nombre'))
     for e_inicio, e_fin in licitacion.get_saltar_etapas():
         etapas = [etapa for etapa in etapas if etapa['id'] not in range(e_inicio, e_fin+1)]
+    usuarios_disponibles = User.objects.filter(is_active=True).order_by('first_name')
+    lista_etapas_disponibles = Etapa.objects.all().order_by('nombre')
+    # 👇 AGREGAR ESTO AL FINAL: Obtener TODAS las etapas del sistema para el selector
+    catalogo_etapas = Etapa.objects.all().order_by('nombre')
+    todos_tipos = TipoLicitacion.objects.all()
+    
+    # Creamos un diccionario gigante con la estructura: { id_tipo: [lista_etapas] }
+    diccionario_flujos = {}
+    
+    for tipo in todos_tipos:
+        stages = TipoLicitacionEtapa.objects.filter(
+            tipo_licitacion=tipo
+        ).select_related('etapa').order_by('orden')
+        
+        lista_etapas = []
+        for s in stages:
+            lista_etapas.append({
+                'id_etapa': s.etapa.id,
+                'nombre_etapa': s.etapa.nombre,
+                'orden': s.orden
+            })
+        diccionario_flujos[tipo.id] = lista_etapas
+
+    # Convertimos a JSON para que Javascript lo entienda
+    json_flujos = json.dumps(diccionario_flujos)
+    
+    # También pasamos la lista de tipos para el Select
+    lista_tipos_licitacion = todos_tipos
+    
     return render(request, 'licitaciones/bitacora_licitacion.html', {
         'licitacion': licitacion,
         'bitacoras': bitacoras,
@@ -1033,6 +1258,12 @@ def bitacora_licitacion(request, licitacion_id):
         'es_vizualizador': es_vizualizador,
         'paginator': paginator,
         'operador_sidebar_nombre': operador_sidebar_nombre,
+        'usuarios': usuarios_disponibles, # 👈 2. AGREGAR ESTA LÍNEA AL CONTEXTO
+        'catalogo_etapas': catalogo_etapas,  # <--- AGREGAR AL CONTEXTO
+        'lista_etapas_disponibles': lista_etapas_disponibles, # <--- IMPORTANTE: Agrega esto al context
+        'json_flujos': json_flujos,               # <--- NUEVO
+        'lista_tipos_licitacion': lista_tipos_licitacion, # <--- NUEVO
+        'lista_etapas_disponibles': lista_etapas_disponibles,
     })
 
 @require_POST
@@ -1447,7 +1678,7 @@ def observacion_bitacora_api(request, bitacora_id):
         )
 
     return JsonResponse({'ok': True})
-
+#agregarproyecto y aqui se guarda.
 @csrf_exempt
 def agregar_proyecto(request):
     try:
@@ -1455,8 +1686,8 @@ def agregar_proyecto(request):
         numero_pedido = data.get('numero_pedido')
         if not numero_pedido:
             return JsonResponse({'ok': False, 'error': 'El N° de pedido es obligatorio.'}, status=400)
-        if Licitacion.objects.filter(numero_pedido=numero_pedido).exists():
-            return JsonResponse({'ok': False, 'error': 'No se puede guardar una licitación con un N° de pedido repetido.'}, status=400)        # Obtener el estado "En curso" (o el que corresponda)
+        # if Licitacion.objects.filter(numero_pedido=numero_pedido).exists():
+        #     return JsonResponse({'ok': False, 'error': 'No se puede guardar una licitación con un N° de pedido repetido.'}, status=400)        # Obtener el estado "En curso" (o el que corresponda)
         estado_en_curso = Estado.objects.filter(nombre__iexact='en curso').first()        # Convertir el monto a número de forma segura
         try:
             monto_presupuestado = float(data.get('monto_presupuestado') or 0)
@@ -1476,6 +1707,7 @@ def agregar_proyecto(request):
             moneda=Moneda.objects.get(id=data.get('moneda')) if data.get('moneda') else None,
             categoria=Categoria.objects.get(id=data.get('categoria')) if data.get('categoria') else None,
             en_plan_anual=data.get('en_plan_anual', False),
+            justificacion_plan=data.get('justificacion_plan', ''), # ◄---- AGREGA ESTA LÍNEA
             iniciativa=data.get('iniciativa', ''),
             direccion=data.get('direccion', ''),
             institucion=data.get('institucion', ''),
@@ -1485,6 +1717,7 @@ def agregar_proyecto(request):
             llamado_cotizacion=data.get('llamado_cotizacion', ''),
             tipo_presupuesto=tipo_presupuesto,
             estado_fk=estado_en_curso,
+            profesional_a_cargo=data.get('profesional_a_cargo', ''),
             pedido_devuelto=data.get('pedido_devuelto', False),            # Agregar la licitación fallida si se proporcionó un ID
             licitacion_fallida_linkeada=Licitacion.objects.get(id=data.get('licitacion_fallida_linkeada')) if data.get('licitacion_fallida_linkeada') else None,
         )
@@ -2138,7 +2371,7 @@ def calendario_actividad(request):
 
 @require_GET
 def obtener_eventos_calendario(request):
-    """API para obtener eventos del calendario"""
+    """API para obtener eventos de fechas clave del calendario"""
     # Verificar que sea admin
     perfil = getattr(request.user, 'perfil', None)
     if not perfil or perfil.rol != 'admin':
@@ -2146,113 +2379,81 @@ def obtener_eventos_calendario(request):
     
     try:
         # Obtener parámetros de fecha
-        año = request.GET.get('año', timezone.now().year)
+        año = int(request.GET.get('año', timezone.now().year))
         mes = request.GET.get('mes', None)
-        
-        año = int(año)
         if mes:
             mes = int(mes)
         
         eventos = []
         
-        # 1. Eventos de creación de licitaciones
-        # Obtener fechas de inicio y fin para el filtro en zona horaria local
+        # Calcular rangos de fecha (Objetos datetime conscientes de zona horaria)
         if mes:
-            # Filtrar por año y mes específico
             fecha_inicio = timezone.make_aware(datetime(año, mes, 1))
             if mes == 12:
                 fecha_fin = timezone.make_aware(datetime(año + 1, 1, 1))
             else:
                 fecha_fin = timezone.make_aware(datetime(año, mes + 1, 1))
-
-            licitaciones_query = Licitacion.objects.select_related('operador_user', 'tipo_licitacion').filter(
-                fecha_creacion__gte=fecha_inicio,
-                fecha_creacion__lt=fecha_fin
-            )
         else:
-            # Filtrar solo por año
             fecha_inicio = timezone.make_aware(datetime(año, 1, 1))
             fecha_fin = timezone.make_aware(datetime(año + 1, 1, 1))
-            
-            licitaciones_query = Licitacion.objects.select_related('operador_user', 'tipo_licitacion').filter(
-                fecha_creacion__gte=fecha_inicio,
-                fecha_creacion__lt=fecha_fin
-            )
-        
-        for licitacion in licitaciones_query:
-            # Convertir a zona horaria local
-            fecha_local = timezone.localtime(licitacion.fecha_creacion)
-            eventos.append({
-                'tipo': 'creacion',
-                'fecha': fecha_local.strftime('%Y-%m-%d'),
-                'hora': fecha_local.strftime('%H:%M'),
-                'titulo': f'Licitación creada: {licitacion.numero_pedido}',
-                'descripcion': f'{licitacion.iniciativa or "Sin iniciativa"}',
-                'operador': str(licitacion.operador_user) if licitacion.operador_user else 'Sin operador',
-                'tipo_licitacion': str(licitacion.tipo_licitacion),
-                'licitacion_id': licitacion.id,
-                'color': '#28a745'  # Verde para creaciones
-            })
-        
-        # 2. Eventos de observaciones/cambios de etapa
-        # Aplicar el mismo filtro de fechas para bitácoras
-        if mes:
-            bitacoras_query = BitacoraLicitacion.objects.select_related(
-                'licitacion', 'operador_user', 'etapa'
-            ).filter(
-                fecha__gte=fecha_inicio,
-                fecha__lt=fecha_fin
-            )
-        else:
-            bitacoras_query = BitacoraLicitacion.objects.select_related(
-                'licitacion', 'operador_user', 'etapa'
-            ).filter(
-                fecha__gte=fecha_inicio,
-                fecha__lt=fecha_fin
-            )
-        
-        for bitacora in bitacoras_query:
-            # Convertir a zona horaria local
-            fecha_local = timezone.localtime(bitacora.fecha)
-            
-            # Determinar tipo de evento
-            texto_lower = bitacora.texto.lower()
-            if 'etapa' in texto_lower and ('cambió' in texto_lower or 'avanzó' in texto_lower or 'retrocedió' in texto_lower):
-                tipo_evento = 'cambio_etapa'
-                color = '#007bff'  # Azul para cambios de etapa
-                icono = '📈'
-            elif 'fallida' in texto_lower or 'cerrada' in texto_lower:
-                tipo_evento = 'cierre'
-                color = '#dc3545'  # Rojo para cierres
-                icono = '❌'
-            else:
-                tipo_evento = 'observacion'
-                color = '#ffc107'  # Amarillo para observaciones
-                icono = '📝'
-            
-            eventos.append({
-                'tipo': tipo_evento,
-                'fecha': fecha_local.strftime('%Y-%m-%d'),
-                'hora': fecha_local.strftime('%H:%M'),
-                'titulo': f'{icono} Licitación {bitacora.licitacion.numero_pedido}',
-                'descripcion': bitacora.texto[:100] + ('...' if len(bitacora.texto) > 100 else ''),
-                'operador': str(bitacora.operador_user) if bitacora.operador_user else 'Sistema',
-                'etapa': str(bitacora.etapa) if bitacora.etapa else 'Sin etapa',
-                'licitacion_id': bitacora.licitacion.id,
-                'bitacora_id': bitacora.id,
-                'color': color
-            })
-        
-        # Ordenar eventos por fecha y hora
-        eventos.sort(key=lambda x: f"{x['fecha']} {x['hora']}", reverse=True)
+
+        # Convertimos a .date() para comparar con DateFields en la BD
+        date_inicio = fecha_inicio.date()
+        date_fin = fecha_fin.date()
+
+        # Configuración de los campos que queremos buscar
+        # (Nombre Campo BD, Título Evento, Color, Icono)
+        campos_config = [
+            ('fecha_cierre_preguntas_publicacionportal', 'Cierre Preguntas Portal', '#ffc107', '❓'), # Amarillo
+            ('fecha_respuesta_publicacionportal', 'Respuestas Portal', '#17a2b8', '💬'),      # Cyan
+            ('fecha_cierre_oferta_publicacionportal', 'Cierre Ofertas Portal', '#dc3545', '🛑'),   # Rojo
+            ('fecha_estimada_adjudicacion_publicacionportal', 'Est. Adjudicación', '#007bff', '🏆'), # Azul
+            ('fecha_cierre_ofertas_mercado_publico', 'Cierre Ofertas MP', '#fd7e14', '🛒'),     # Naranja
+            ('fecha_tope_firma_contrato', 'Tope Firma Contrato', '#28a745', '✍️'),          # Verde
+        ]
+
+        # 1. Construir consulta dinámica (OR)
+        # Buscamos licitaciones donde AL MENOS UNA de las fechas caiga en el rango
+        query = Q()
+        for campo, _, _, _ in campos_config:
+            # campo__range incluye los extremos, restamos 1 día al fin para que sea exacto al mes
+            query |= Q(**{f"{campo}__range": (date_inicio, date_fin - timedelta(days=1))})
+
+        # 2. Ejecutar consulta
+        licitaciones = Licitacion.objects.filter(query).select_related('operador_user')
+
+        # 3. Procesar resultados
+        for lic in licitaciones:
+            # Revisamos cada campo configurado para ver si esta licitación tiene fecha en este mes
+            for campo_bd, titulo_evento, color_evento, icono in campos_config:
+                fecha_valor = getattr(lic, campo_bd, None)
+                
+                if fecha_valor and date_inicio <= fecha_valor < date_fin:
+                    # Crear el evento
+                    eventos.append({
+                        'tipo': 'vencimiento',
+                        'fecha': fecha_valor.strftime('%Y-%m-%d'),
+                        'hora': '23:59', # Asumimos final del día para plazos
+                        'titulo': f"{icono} {titulo_evento}",
+                        'descripcion': f"Licitación: {lic.numero_pedido or 'S/N'}\nIniciativa: {lic.iniciativa or '---'}\nOperador: {lic.operador_user or 'Sin asignar'}",
+                        'operador': str(lic.operador_user) if lic.operador_user else 'Sistema',
+                        'etapa': str(lic.etapa_fk) if lic.etapa_fk else 'Sin etapa',
+                        'licitacion_id': lic.id,
+                        'color': color_evento
+                    })
+
+        # Ordenar eventos por fecha
+        eventos.sort(key=lambda x: x['fecha'])
         
         return JsonResponse({
-            'ok': True,
-            'eventos': eventos,
+            'ok': True, 
+            'eventos': eventos, 
             'total': len(eventos)
         })
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'ok': False, 'error': str(e)}, status=500)
 
 @csrf_exempt
@@ -2340,4 +2541,65 @@ def api_puede_avanzar_etapa(request, licitacion_id):
         'ok': True,
         'puede_avanzar': puede_avanzar,
         'ultima_bitacora': ultima_bitacora,
+    })
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import Departamento
+import json
+
+def crear_departamento_ajax(request):
+    """Vista auxiliar para crear departamentos desde el formulario vía AJAX"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            nombre_nuevo = data.get('nombre')
+            
+            if not nombre_nuevo:
+                return JsonResponse({'error': 'Falta el nombre'}, status=400)
+
+            # Crea el departamento o recupera uno si ya existe con ese nombre
+            departamento, created = Departamento.objects.get_or_create(
+                nombre=nombre_nuevo.strip() # strip quita espacios extra
+            )
+            
+            return JsonResponse({
+                'id': departamento.id,
+                'nombre': departamento.nombre,
+                'nuevo': created
+            })
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'Método no permitido'}, status=405)
+from django.http import JsonResponse, Http404
+from django.contrib.auth.decorators import login_required
+from .models import Licitacion
+
+@login_required
+def licitacion_info_general(request, licitacion_id):
+    try:
+        lic = Licitacion.objects.select_related(
+            "departamento",
+            "etapa_fk",
+            "estado_fk",
+            "tipo_licitacion",
+            "operador_user",
+            "operador_2"
+        ).get(pk=licitacion_id)
+    except Licitacion.DoesNotExist:
+        raise Http404("Licitación no encontrada")
+
+    return JsonResponse({
+        "id": lic.id,
+        "iniciativa": lic.iniciativa,
+        "numero_pedido": lic.numero_pedido,
+        "departamento": lic.departamento.nombre if lic.departamento else "-",
+        "operador_1": lic.operador_user.get_full_name() if lic.operador_user else "-",
+        "operador_2": lic.operador_2.get_full_name() if lic.operador_2 else "-",
+        "estado": lic.estado_fk.nombre if lic.estado_fk else "-",
+        "etapa": lic.etapa_fk.nombre if lic.etapa_fk else "-",
+        "tipo_licitacion": lic.tipo_licitacion.nombre if lic.tipo_licitacion else "-",
+        "monto": lic.monto_presupuestado,
+        "moneda": lic.moneda.nombre if lic.moneda else "-",
+        "en_plan_anual": "Sí" if lic.en_plan_anual else "No",
     })
