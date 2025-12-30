@@ -174,7 +174,7 @@
                         <td data-campo="iniciativa" data-col="iniciativa" data-label="Iniciativa" title="{{ licitacion.iniciativa }}">{{ licitacion.iniciativa }}</td>
                         <td data-campo="departamento" data-col="departamento" data-label="Departamento">{{ licitacion.departamento.nombre|default:licitacion.departamento }}</td>
                         <td data-campo="numero_pedido" data-col="numero_pedido" data-label="N° de pedido">
-    {{ licitacion.numero_pedido }}-{{ licitacion.fecha_creacion|date:"y" }}
+    {{ licitacion.numero_pedido }}
 </td>
                         <td data-campo="id_mercado_publico" data-col="id_mercado_publico" data-label="ID Mercado Público">{{ licitacion.id_mercado_publico|default:"-" }}</td>
                         <td data-campo="orden_compra" data-col="orden_compra" data-label="Orden de compra">{{ licitacion.orden_compra_adjudicacion|default:"-" }}</td>
