@@ -977,12 +977,15 @@ def bitacora_licitacion(request, licitacion_id):
         fecha_recepcion_documento_regimen_interno = request.POST.get('fecha_recepcion_documento_regimen_interno', '').strip()
 
         
-
         fecha_tope_firma_contrato = request.POST.get('fecha_tope_firma_contrato', '').strip()
-        # Manejar avance/retroceso de etapa
         accion_etapa = request.POST.get('accion_etapa')
-        if request.POST.get('redestinar', '')=='true' and etapa_obj:
+        es_redestinacion = request.POST.get('redestinar', '') == 'true'
+
+
+        # --- 1. Lógica de Limpieza (Solo si es Redestinar) ---
+        if es_redestinacion and etapa_obj:
             valores['Redestinado'] = str(etapa_nombre)
+            # Limpiar datos futuros para reiniciar el proceso
             if licitacion.tipo_licitacion and 'trato directo' in licitacion.tipo_licitacion.nombre.lower().strip():
                 licitacion.fecha_disponibilidad_presupuestaria = None
             licitacion.fecha_evaluacion_cotizacion = None
@@ -1003,13 +1006,52 @@ def bitacora_licitacion(request, licitacion_id):
             licitacion.fecha_tope_firma_contrato = None
             fecha_tope_firma_contrato = None
             licitacion.save()
-        if accion_etapa == 'advance' and etapa_obj:
-            licitacion.etapa_fk = etapa_obj
-            licitacion.save()
-        elif accion_etapa == 'retreat' and etapa_obj:
-            licitacion.etapa_fk = etapa_obj
-            licitacion.save()
 
+        # --- 2. Lógica de "El Puntero" (¿Se mueve la etapa actual?) ---
+        if etapa_obj:
+            debe_cambiar_etapa = False # Por seguridad, empezamos en NO
+
+            # A. Si es Redestinación -> SIEMPRE CAMBIA (Retrocede/Reinicia)
+            if es_redestinacion:
+                debe_cambiar_etapa = True
+            
+            # B. Si no tiene etapa actual -> SIEMPRE CAMBIA (Inicializa)
+            elif not licitacion.etapa_fk:
+                debe_cambiar_etapa = True
+
+            # C. Caso Normal: Comparar órdenes matemáticamente
+            else:
+                try:
+                    rel_actual = TipoLicitacionEtapa.objects.filter(
+                        tipo_licitacion=licitacion.tipo_licitacion, 
+                        etapa=licitacion.etapa_fk
+                    ).first()
+                    
+                    rel_nueva = TipoLicitacionEtapa.objects.filter(
+                        tipo_licitacion=licitacion.tipo_licitacion, 
+                        etapa=etapa_obj
+                    ).first()
+
+                    if rel_actual and rel_nueva:
+                        # Si la NUEVA es MAYOR que la ACTUAL -> AVANZA
+                        if rel_nueva.orden > rel_actual.orden:
+                            debe_cambiar_etapa = True
+                        
+                        # Si la NUEVA es MENOR o IGUAL -> NO HACE NADA (Se queda en la avanzada)
+                        else:
+                            debe_cambiar_etapa = False
+                    else:
+                        # Si no hay configuración de orden, mejor no mover por seguridad
+                        debe_cambiar_etapa = False
+                        
+                except Exception as e:
+                    print(f"Error calculando orden: {e}")
+                    debe_cambiar_etapa = False
+
+            # --- Ejecutar cambio si corresponde ---
+            if debe_cambiar_etapa:
+                licitacion.etapa_fk = etapa_obj
+                licitacion.save()
         # Actualizar información adicional para ciertas etapas
         if id_mercado_publico:
             licitacion.id_mercado_publico = id_mercado_publico
