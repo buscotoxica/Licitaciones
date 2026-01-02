@@ -16,20 +16,28 @@
         </div>
         
         <div class="calendario-controles">
-            <div class="filtros-fecha">
-                <div class="filtro-grupo">
-                    <label for="selectAño">Año:</label>
-                    <select id="selectAño" class="filtro-select">
-    {% for año in años_disponibles %}
-        <option value="{{ año }}" {% if año == año_actual %}selected{% endif %}>{{ año }}</option>
-    {% endfor %}
+    <div class="filtros-fecha">
 
-    <option value="{{ año_actual|add:'1' }}">{{ año_actual|add:'1' }}</option>
-</select>
-                </div>
-                <div class="filtro-grupo">
-                    <label for="selectMes">Mes:</label>
-                    <select id="selectMes" class="filtro-select">
+        <div class="filtro-grupo">
+            <label for="selectAño">Año:</label>
+            <select id="selectAño" class="filtro-select">
+                {# 1. Años anteriores disponibles (Historial) #}
+                {% for año in años_disponibles %}
+                    {% if año < año_actual %}
+                        <option value="{{ año }}">{{ año }}</option>
+                    {% endif %}
+                {% endfor %}
+
+                {# 2. Año Actual (Siempre visible y SELECCIONADO por defecto) #}
+                <option value="{{ año_actual }}" selected>{{ año_actual }}</option>
+
+                {# 3. Año Siguiente (Siempre disponible) #}
+                <option value="{{ año_actual|add:'1' }}">{{ año_actual|add:'1' }}</option>
+            </select>
+        </div>
+        <div class="filtro-grupo">
+            <label for="selectMes">Mes:</label>
+            <select id="selectMes" class="filtro-select">
                         <option value="">Todos los meses</option>
                         <option value="1" {% if mes_actual == 1 %}selected{% endif %}>Enero</option>
                         <option value="2" {% if mes_actual == 2 %}selected{% endif %}>Febrero</option>
@@ -63,33 +71,20 @@
             <h3>Leyenda de Eventos:</h3>
             <div class="leyenda-items">
                 <div class="leyenda-item">
-                    <span class="leyenda-color"></span>
-                    <span>❓ Cierre Preguntas Portal</span>
+                    <span class="leyenda-color" style="background: #28a745;"></span>
+                    <span>Licitación creada</span>
                 </div>
-
                 <div class="leyenda-item">
-                    <span class="leyenda-color" ></span>
-                    <span>💬 Respuestas Portal</span>
+                    <span class="leyenda-color" style="background: #007bff;"></span>
+                    <span>Cambio de etapa</span>
                 </div>
-
                 <div class="leyenda-item">
-                    <span class="leyenda-color"></span>
-                    <span>🛑 Cierre Ofertas Portal</span>
+                    <span class="leyenda-color" style="background: #ffc107;"></span>
+                    <span>Observación</span>
                 </div>
-
                 <div class="leyenda-item">
-                    <span class="leyenda-color" ></span>
-                    <span>🏆 Est. Adjudicación</span>
-                </div>
-
-                <div class="leyenda-item">
-                    <span class="leyenda-color" ></span>
-                    <span>🛒 Cierre Ofertas MP</span>
-                </div>
-
-                <div class="leyenda-item">
-                    <span class="leyenda-color" ></span>
-                    <span>✍️ Tope Firma Contrato</span>
+                    <span class="leyenda-color" style="background: #dc3545;"></span>
+                    <span>Licitación cerrada/fallida</span>
                 </div>
             </div>
         </div>
@@ -193,111 +188,9 @@
             </div>
         </div>
     </div>
-    <script>
-(function() {
-    console.log("🛠️ Sistema de Calendario: Modo Dual Activado");
-
-    window.cerrarMiModal = function() {
-        const modal = document.getElementById('miModalGenerado');
-        if (modal) modal.remove();
-    };
-
-    // Función para mostrar el detalle de UN evento (tu modal actual)
-    window.mostrarModalEvento = function(datos) {
-        cerrarMiModal();
-        let nombreIniciativa = "";
-        if (datos.descripcion) {
-            const lineas = datos.descripcion.split('\n');
-            const lineaIni = lineas.find(l => l.toLowerCase().includes('iniciativa:'));
-            nombreIniciativa = lineaIni ? lineaIni.replace(/iniciativa:/i, '').trim() : "";
-        }
-        if (!nombreIniciativa) nombreIniciativa = datos.titulo || "";
-
-        const urlBusqueda = '/administracion/?q=' + encodeURIComponent(nombreIniciativa).replace(/%20/g, '+');
-        const descLimpia = (datos.descripcion || '').replace(/Licitación:\s*[\d\w-]+\s*(\n)?/gi, '').trim();
-
-        const modalDiv = document.createElement('div');
-        modalDiv.id = 'miModalGenerado';
-        modalDiv.style.cssText = `position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100000; display:flex; align-items:center; justify-content:center; font-family:sans-serif;`;
-        
-        modalDiv.innerHTML = `
-            <div style="background:white; width:90%; max-width:500px; border-radius:10px; padding:25px; position:relative; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
-                <span onclick="cerrarMiModal()" style="position:absolute; top:10px; right:15px; font-size:30px; cursor:pointer; color:#999;">&times;</span>
-                <h3 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px; color:#333;">${datos.titulo}</h3>
-                <div style="margin:15px 0; font-size:14px; color:#444; line-height:1.5; white-space:pre-wrap;">${descLimpia}</div>
-                <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
-                    <button onclick="window.location.href='${urlBusqueda}'" style="background:#007bff; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">🔍 Licitación</button>
-                    <button onclick="window.location.href='/bitacora/${datos.licitacion_id}/'" style="background:#28a745; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">📝 Bitácora</button>
-                </div>
-            </div>
-        `;
-        modalDiv.onclick = function(e) { if(e.target === modalDiv) cerrarMiModal(); };
-        document.body.appendChild(modalDiv);
-    };
-
-    // NUEVA: Función para mostrar la lista de eventos del día
-    window.mostrarListaDia = function(eventosDelDia, fechaTexto) {
-        cerrarMiModal();
-        const modalDiv = document.createElement('div');
-        modalDiv.id = 'miModalGenerado';
-        modalDiv.style.cssText = `position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100000; display:flex; align-items:center; justify-content:center; font-family:sans-serif;`;
-
-        let listaHTML = eventosDelDia.map(ev => {
-            const d = JSON.parse(decodeURIComponent(ev.getAttribute('data-evento')));
-            // Determinar color según el tipo (opcional)
-            let color = ev.style.backgroundColor || '#007bff';
-            return `
-                <div class="item-lista-dia" onclick='mostrarModalEvento(${JSON.stringify(d)})' 
-                     style="padding:12px; margin-bottom:10px; border-left:5px solid ${color}; background:#f9f9f9; cursor:pointer; border-radius:4px; transition: 0.2s; hover:background:#eee;">
-                    <div style="font-weight:bold; color:#333;">${d.titulo}</div>
-                    <div style="font-size:12px; color:#666;">${d.operador || 'Sistema'}</div>
-                </div>
-            `;
-        }).join('');
-
-        modalDiv.innerHTML = `
-            <div style="background:white; width:95%; max-width:400px; border-radius:10px; padding:20px; position:relative;">
-                <span onclick="cerrarMiModal()" style="position:absolute; top:10px; right:15px; font-size:30px; cursor:pointer; color:#999;">&times;</span>
-                <h3 style="margin-top:0; margin-bottom:15px; font-size:18px; color:#555;">Actividades del día</h3>
-                <div style="max-height:400px; overflow-y:auto;">
-                    ${listaHTML || '<p style="color:#888;">No hay eventos para este día.</p>'}
-                </div>
-            </div>
-        `;
-        modalDiv.onclick = function(e) { if(e.target === modalDiv) cerrarMiModal(); };
-        document.body.appendChild(modalDiv);
-    };
-
-    // 3. CAPTURA DE CLICS INTELIGENTE
-    document.addEventListener('click', function(e) {
-        // Caso A: Clic en un evento específico
-        const itemEvento = e.target.closest('.evento-item');
-        if (itemEvento) {
-            e.preventDefault(); e.stopPropagation();
-            const rawData = itemEvento.getAttribute('data-evento');
-            if (rawData) mostrarModalEvento(JSON.parse(decodeURIComponent(rawData)));
-            return;
-        }
-
-        // Caso B: Clic en el cuadro del día (celda del calendario)
-        // Ajustamos '.fc-daygrid-day' o '.calendario-dia' según la clase que use tu calendario
-        const celdaDia = e.target.closest('.fc-daygrid-day, .calendario-dia, td');
-        if (celdaDia) {
-            const eventos = Array.from(celdaDia.querySelectorAll('.evento-item'));
-            if (eventos.length > 0) {
-                e.preventDefault(); e.stopPropagation();
-                mostrarListaDia(eventos);
-            }
-        }
-    }, true);
-
-})();
-
     
-</script>
     {% csrf_token %}
-
+    <script src="{% static 'licitaciones/js/sidebar.js' %}?v=1.0"></script>
     <script src="{% static 'licitaciones/js/calendario_actividad.js' %}?v=1.0"></script>
-    
 </body>
 </html>
