@@ -287,13 +287,13 @@
                                     Número de orden de compra:
                                 </label>
                                 <input 
-                                    type="number" 
-                                    id="numeroOrdenCompraInput" 
-                                    name="orden_compra_adjudicacion" 
-                                    class="campoEtapa"
-                                    placeholder="Ej: 12345"
-                                    max=999999999999999
-                                    value="{{ licitacion.orden_compra_adjudicacion|default:'' }}">
+    type="text"
+    id="numeroOrdenCompraInput"
+    name="orden_compra_adjudicacion"
+    class="campoEtapa"
+    placeholder="Ej: 111-234-12314"
+    maxlength="50"
+    value="{{ licitacion.orden_compra_adjudicacion|default:'' }}">
                             </div>
                         </div>
 
@@ -715,18 +715,7 @@
 
             this.value = partes.join('.');
         });
-            document.getElementById('numeroOrdenCompraInput').addEventListener('input', function () {
-            // Permitimos decimales, pero cortamos la parte entera a 8 dígitos
-            let valor = this.value;
-            let partes = valor.split('.');
-
-            if (partes[0].length > 13) {
-                partes[0] = partes[0].slice(0, 13);
-            }
-
-            this.value = partes.join('.');
-        });
-
+            
         </script>
         <script src="{% static 'licitaciones/js/bitacora_licitacion.js' %}" defer></script>
     </div>

@@ -111,7 +111,12 @@ class Licitacion(models.Model):
     monto_adjudicacion = models.DecimalField(max_digits=15, decimal_places=2, blank=True, null=True, verbose_name="Fecha de decreto de adjudicación")
     fecha_decreto_adjudicacion = models.DateField(blank=True, null=True)
     fecha_subida_mercado_publico_adjudicacion = models.DateField(blank=True, null=True, verbose_name="Fecha de subida de adjudicación a mercado público")
-    orden_compra_adjudicacion = models.IntegerField(default=0, blank=True, null=True, verbose_name="Orden de compra de adjudicación")
+    orden_compra_adjudicacion = models.CharField(
+    max_length=50,
+    blank=True,
+    null=True,
+    verbose_name="Orden de compra de adjudicación"
+)
 
     fecha_evaluacion_tecnica_evaluacion = models.DateField(blank=True, null=True, verbose_name="Fecha que se envía evaluación técnica")
     nombre_integrante_uno_evaluacion = models.CharField(max_length=100, blank=True, null=True, verbose_name="Integrante uno evaluación")
